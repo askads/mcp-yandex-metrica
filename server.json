@@ -1,0 +1,42 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.askads/mcp-yandex-metrica",
+  "title": "Yandex Metrica",
+  "description": "MCP server for Yandex Metrica API: list counters, goals and pull web-analytics statistics.",
+  "websiteUrl": "https://github.com/askads/mcp-yandex-metrica#readme",
+  "repository": {
+    "url": "https://github.com/askads/mcp-yandex-metrica",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "mcp-yandex-metrica",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "YANDEX_METRIKA_TOKEN",
+          "description": "Yandex Metrica OAuth token (scope metrika:read) — read access to analytics data. Treat it as a secret.",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "YANDEX_METRIKA_COUNTER_ID",
+          "description": "Default Metrica counter id, used when a tool call omits counterId.",
+          "isRequired": false
+        },
+        {
+          "name": "YANDEX_METRIKA_LANG",
+          "description": "Language for API responses (ru, en, ...).",
+          "isRequired": false,
+          "default": "ru"
+        }
+      ]
+    }
+  ]
+}
