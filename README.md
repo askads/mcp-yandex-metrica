@@ -2,6 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/mcp-yandex-metrica)](https://www.npmjs.com/package/mcp-yandex-metrica)
 [![CI](https://github.com/askads/mcp-yandex-metrica/actions/workflows/ci.yml/badge.svg)](https://github.com/askads/mcp-yandex-metrica/actions/workflows/ci.yml)
+[![Glama](https://glama.ai/mcp/servers/askads/mcp-yandex-metrica/badges/score.svg)](https://glama.ai/mcp/servers/askads/mcp-yandex-metrica)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 MCP-сервер для **Yandex Metrica (Яндекс Метрика)**: спрашивайте веб-аналитику — посещаемость,
