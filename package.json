@@ -1,6 +1,6 @@
 {
   "name": "mcp-yandex-metrica",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "MCP server for the Yandex Metrica API — list counters and goals, pull web-analytics statistics (visits, users, bounce rate, conversions) from AI agents.",
   "mcpName": "io.github.askads/mcp-yandex-metrica",
   "type": "module",

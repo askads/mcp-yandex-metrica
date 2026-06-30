@@ -51,7 +51,15 @@ export function csv(values?: Array<string | number>): string | undefined {
  *   WRITE_UPDATE — update tools; re-applying the same input is idempotent.
  *   WRITE_DELETE — delete tools and raw_request.
  */
-export const READ_ONLY = { readOnlyHint: true, openWorldHint: true } as const;
+// All four hints set explicitly: some clients (OpenAI Apps review) require readOnlyHint,
+// destructiveHint and openWorldHint on every tool. Read-only tools never mutate, so they
+// are non-destructive and idempotent (re-reading yields the same result).
+export const READ_ONLY = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: true,
+} as const;
 export const WRITE_CREATE = {
   readOnlyHint: false,
   destructiveHint: false,
