@@ -35,12 +35,12 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
           .array(z.string())
           .optional()
           .describe("Group-by dimensions, e.g. ym:s:date, ym:s:lastTrafficSource, ym:s:deviceCategory. Omit for a period total."),
-        date1: metrikaDate
+        date1: metrikaDate()
           .optional()
           .describe("Start date YYYY-MM-DD or relative (today, yesterday, NdaysAgo). Default 7daysAgo."),
-        date2: metrikaDate
+        date2: metrikaDate()
           .optional()
-          .describe("End date YYYY-MM-DD or relative. Default yesterday."),
+          .describe("End date YYYY-MM-DD or relative (today, yesterday, NdaysAgo). Default yesterday."),
         filters: z
           .string()
           .optional()

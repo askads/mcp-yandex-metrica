@@ -13,11 +13,12 @@ test("csv joins non-empty arrays and returns undefined otherwise", () => {
 });
 
 test("metrikaDate accepts ISO and relative tokens, rejects junk", () => {
-  assert.equal(metrikaDate.safeParse("2026-06-01").success, true);
-  assert.equal(metrikaDate.safeParse("today").success, true);
-  assert.equal(metrikaDate.safeParse("yesterday").success, true);
-  assert.equal(metrikaDate.safeParse("7daysAgo").success, true);
-  assert.equal(metrikaDate.safeParse("June").success, false);
+  const d = metrikaDate(); // factory → fresh schema
+  assert.equal(d.safeParse("2026-06-01").success, true);
+  assert.equal(d.safeParse("today").success, true);
+  assert.equal(d.safeParse("yesterday").success, true);
+  assert.equal(d.safeParse("7daysAgo").success, true);
+  assert.equal(d.safeParse("June").success, false);
 });
 
 test("ok emits compact JSON; fail flags isError", () => {

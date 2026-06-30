@@ -4,13 +4,19 @@ import { z } from "zod";
 /**
  * A Metrica date: an ISO day (YYYY-MM-DD) or a relative token the Stat API
  * accepts (today, yesterday, NdaysAgo).
+ *
+ * A FACTORY (not a shared const): reusing one zod object across fields makes
+ * zod-to-json-schema dedupe them into a `$ref` (e.g. date2 → #/properties/date1),
+ * which some tool-schema consumers (OpenAI Apps review) don't dereference and
+ * flag as `any`. A fresh object per field keeps each one inlined with its type+pattern.
  */
-export const metrikaDate = z
-  .string()
-  .regex(
-    /^(\d{4}-\d{2}-\d{2}|today|yesterday|\d+daysAgo)$/,
-    "Must be YYYY-MM-DD or a relative token (today, yesterday, NdaysAgo)",
-  );
+export const metrikaDate = () =>
+  z
+    .string()
+    .regex(
+      /^(\d{4}-\d{2}-\d{2}|today|yesterday|\d+daysAgo)$/,
+      "Must be YYYY-MM-DD or a relative token (today, yesterday, NdaysAgo)",
+    );
 
 /** Wraps a value as a compact-JSON tool result (compact: the consumer is an LLM). */
 export function ok(data: unknown): CallToolResult {
