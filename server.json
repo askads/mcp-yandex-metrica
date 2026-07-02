@@ -8,13 +8,13 @@
     "url": "https://github.com/askads/mcp-yandex-metrica",
     "source": "github"
   },
-  "version": "1.0.1",
+  "version": "1.1.0",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "mcp-yandex-metrica",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "transport": {
         "type": "stdio"
       },
@@ -35,6 +35,24 @@
           "description": "Language for API responses (ru, en, ...).",
           "isRequired": false,
           "default": "ru"
+        },
+        {
+          "name": "YANDEX_METRIKA_API_BASE",
+          "description": "API root host. Override only for a proxy or a non-default endpoint.",
+          "isRequired": false,
+          "default": "https://api-metrika.yandex.net"
+        },
+        {
+          "name": "YANDEX_METRIKA_TIMEOUT_MS",
+          "description": "Per-request timeout in milliseconds.",
+          "isRequired": false,
+          "default": "60000"
+        },
+        {
+          "name": "YANDEX_METRIKA_MAX_RETRIES",
+          "description": "Max retries for transient errors (429 rate limit, 5xx on reads).",
+          "isRequired": false,
+          "default": "3"
         }
       ]
     }

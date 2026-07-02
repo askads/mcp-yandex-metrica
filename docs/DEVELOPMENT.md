@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Node.js 18+ (the published package ships compiled `dist/`; `npx` needs no separate install).
+- Node.js 20+ (the published package ships compiled `dist/`; `npx` needs no separate install). CI runs on Node 20/22/24.
 
 ## Commands
 

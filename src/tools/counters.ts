@@ -1,15 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { YandexMetrikaClient } from "../client.js";
-import { compact, fail, ok, READ_ONLY } from "./util.js";
-
-/** Resolves the counter id from the tool arg or the configured default. */
-export function resolveCounter(
-  counterId: number | undefined,
-  client: YandexMetrikaClient,
-): number | undefined {
-  return counterId ?? client.defaultCounterId;
-}
+import { compact, fail, ok, READ_ONLY, resolveCounter } from "./util.js";
 
 export function registerCounterTools(server: McpServer, client: YandexMetrikaClient): void {
   server.registerTool(

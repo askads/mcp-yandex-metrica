@@ -111,6 +111,84 @@ test("request() retries a 5xx then returns the result", async () => {
   }
 });
 
+test("request() does NOT retry a 5xx for a non-idempotent POST (avoids duplicate writes)", async () => {
+  let calls = 0;
+  const mock = mockFetch(() => {
+    calls++;
+    return new Response("server error", { status: 500 });
+  });
+  try {
+    await assert.rejects(
+      () => makeClient().request("POST", "management/v1/counter/1/goals", { body: { name: "X" } }),
+      /HTTP 500/,
+    );
+    assert.equal(calls, 1);
+  } finally {
+    mock.restore();
+  }
+});
+
+test("request() DOES retry a 429 for a POST (request was not processed)", async () => {
+  let calls = 0;
+  const mock = mockFetch(() => {
+    calls++;
+    if (calls === 1) return new Response("slow down", { status: 429 });
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  });
+  try {
+    const result = await makeClient().request("POST", "management/v1/counter/1/goals", { body: { name: "X" } });
+    assert.deepEqual(result, { ok: true });
+    assert.equal(calls, 2);
+  } finally {
+    mock.restore();
+  }
+});
+
+test("request() rejects an absolute/foreign-origin path (SSRF) and makes no fetch", async () => {
+  for (const path of ["https://evil.example/steal", "http://evil.example/x", "\\\\evil.example/x"]) {
+    const mock = mockFetch(() => new Response("{}", { status: 200 }));
+    try {
+      await assert.rejects(() => makeClient().get(path), /foreign origin/);
+      assert.equal(mock.calls.length, 0, `no fetch for ${path}`);
+    } finally {
+      mock.restore();
+    }
+  }
+});
+
+test("request() retries a network error for GET then succeeds", async () => {
+  let calls = 0;
+  const mock = mockFetch(() => {
+    calls++;
+    if (calls === 1) throw Object.assign(new Error("ECONNRESET"), { name: "Error" });
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  });
+  try {
+    const result = await makeClient().get("stat/v1/data");
+    assert.deepEqual(result, { ok: true });
+    assert.equal(calls, 2);
+  } finally {
+    mock.restore();
+  }
+});
+
+test("request() does NOT retry a network error for a non-idempotent POST", async () => {
+  let calls = 0;
+  const mock = mockFetch(() => {
+    calls++;
+    throw new Error("ECONNRESET");
+  });
+  try {
+    await assert.rejects(
+      () => makeClient().request("POST", "management/v1/counter/1/goals", { body: { name: "X" } }),
+      /ECONNRESET/,
+    );
+    assert.equal(calls, 1);
+  } finally {
+    mock.restore();
+  }
+});
+
 test("request() does not retry a 400 and gives up after maxRetries on 429", async () => {
   let calls = 0;
   const mock = mockFetch(() => {
@@ -174,6 +252,41 @@ test("getAllStat() flags truncation loudly at the maxPages cap", async () => {
     const result = await makeClient().getAllStat({ ids: 1 }, 2);
     assert.equal(result._truncated, true);
     assert.match(result._truncatedNote ?? "", /of 999999/);
+  } finally {
+    mock.restore();
+  }
+});
+
+test("getAllStat() flags truncation at the row cap and stops early", async () => {
+  const mock = mockFetch(() => {
+    const data = Array.from({ length: STAT_PAGE_LIMIT }, (_, i) => ({ i }));
+    return new Response(JSON.stringify({ data, total_rows: 999999 }), { status: 200 });
+  });
+  try {
+    // A small row cap stops after the first page even though maxPages is high.
+    const result = await makeClient().getAllStat({ ids: 1 }, 100, { maxRows: 5 });
+    assert.equal(result._truncated, true);
+    assert.match(result._truncatedNote ?? "", /autoPaginate cap/);
+    assert.equal(mock.calls.length, 1);
+  } finally {
+    mock.restore();
+  }
+});
+
+test("getAllStat() does NOT flag truncation when the data completes exactly on the row cap", async () => {
+  // One full page whose total_rows equals the page/cap size: the dataset is
+  // complete, so it must not be reported as truncated (regression guard for the
+  // cap-vs-completion ordering).
+  const mock = mockFetch(() => {
+    const data = Array.from({ length: STAT_PAGE_LIMIT }, (_, i) => ({ i }));
+    return new Response(JSON.stringify({ data, total_rows: STAT_PAGE_LIMIT }), { status: 200 });
+  });
+  try {
+    const result = await makeClient().getAllStat({ ids: 1 }, 100, { maxRows: STAT_PAGE_LIMIT });
+    assert.equal(result.data.length, STAT_PAGE_LIMIT);
+    assert.notEqual(result._truncated, true);
+    assert.equal(result._truncatedNote, undefined);
+    assert.equal(mock.calls.length, 1);
   } finally {
     mock.restore();
   }

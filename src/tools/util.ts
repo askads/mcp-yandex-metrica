@@ -1,5 +1,14 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import type { YandexMetrikaClient } from "../client.js";
+
+/** Resolves the counter id from the tool arg or the configured default. */
+export function resolveCounter(
+  counterId: number | undefined,
+  client: YandexMetrikaClient,
+): number | undefined {
+  return counterId ?? client.defaultCounterId;
+}
 
 /**
  * A Metrica date: an ISO day (YYYY-MM-DD) or a relative token the Stat API

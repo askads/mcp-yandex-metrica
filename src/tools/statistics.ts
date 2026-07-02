@@ -1,8 +1,14 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { YandexMetrikaClient } from "../client.js";
-import { STAT_MAX_LIMIT } from "../client.js";
-import { compact, csv, fail, metrikaDate, ok, READ_ONLY } from "./util.js";
+import { compact, csv, fail, metrikaDate, ok, READ_ONLY, resolveCounter } from "./util.js";
+
+/**
+ * Max rows a single-page tool call may request. Kept well below the Stat API's
+ * hard STAT_MAX_LIMIT (100k) so a single tool call can't pull an oversized page;
+ * for larger exports use autoPaginate, which pages at STAT_PAGE_LIMIT.
+ */
+const MAX_TOOL_LIMIT = 10_000;
 
 /** Default KPIs returned when the caller does not pick metrics. */
 const DEFAULT_METRICS = [
@@ -50,26 +56,36 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
           .optional()
           .describe("Sort field; prefix with '-' for descending, e.g. -ym:s:visits."),
         accuracy: z
-          .string()
+          .union([z.string(), z.number().min(0).max(1)])
           .optional()
-          .describe("Sampling accuracy: 'full' for exact (slower), or 0..1. Default the API's auto."),
+          .describe("Sampling accuracy: 'full' for exact (slower), or a 0..1 share. Default the API's auto."),
         limit: z
           .number()
           .int()
           .min(1)
-          .max(STAT_MAX_LIMIT)
+          .max(MAX_TOOL_LIMIT)
           .optional()
-          .describe("Max rows per page."),
+          .describe("Max rows per page (ignored when autoPaginate is set)."),
         offset: z.number().int().min(1).optional().describe("1-based row offset for pagination."),
         autoPaginate: z
           .boolean()
           .optional()
-          .describe("Fetch all rows by following limit/offset (merges data, carries totals)."),
+          .describe(
+            "Fetch all rows by following the API-max page size (merges data, carries totals). " +
+              "Ignores `limit`; capped by maxPages and by row/byte limits (flags _truncated when hit).",
+          ),
+        maxPages: z
+          .number()
+          .int()
+          .min(1)
+          .max(1000)
+          .optional()
+          .describe("Page cap for autoPaginate. Default 100."),
       },
     },
-    async ({ counterId, metrics, dimensions, date1, date2, filters, sort, accuracy, limit, offset, autoPaginate }) => {
+    async ({ counterId, metrics, dimensions, date1, date2, filters, sort, accuracy, limit, offset, autoPaginate, maxPages }) => {
       try {
-        const counter = counterId ?? client.defaultCounterId;
+        const counter = resolveCounter(counterId, client);
         if (counter === undefined) {
           return fail("No counter id: pass counterId or set YANDEX_METRIKA_COUNTER_ID.");
         }
@@ -86,7 +102,7 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
           offset,
         });
         const result = autoPaginate
-          ? await client.getAllStat(query)
+          ? await client.getAllStat(query, maxPages)
           : await client.get("stat/v1/data", query);
         return ok(result);
       } catch (e) {
