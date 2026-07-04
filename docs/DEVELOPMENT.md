@@ -41,6 +41,6 @@ Metrica API responses — no token and no network needed. To regenerate:
 npm run build && vhs docs/demo.tape   # requires vhs: brew install vhs
 ```
 
-Important: with the settings in `docs/demo.tape` the vhs terminal is 95 columns
-× 32 rows, and the capture freezes if the buffer scrolls. When changing the
+Important: with the settings in `docs/demo.tape` the vhs terminal is 97 columns
+× 33 rows, and the capture freezes if the buffer scrolls. When changing the
 script or the fixtures, make sure the whole output still fits on one screen.
