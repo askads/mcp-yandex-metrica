@@ -22,7 +22,7 @@ MCP-сервер для **Yandex Metrica (Яндекс Метрика)**: спр
 2. Добавьте сервер — например, в Claude Code ([другие клиенты](#установка)):
 
    ```bash
-   claude mcp add yandex-metrica -e YANDEX_METRIKA_TOKEN=ваш_токен -- npx -y mcp-yandex-metrica
+   claude mcp add yandex-metrica -e YANDEX_METRIKA_TOKEN=ваш_токен -- npx -y mcp-yandex-metrica@latest
    ```
 
 3. Спросите ассистента: «Какая конверсия по цели "Оформление заказа" за 30 дней?»
@@ -59,7 +59,7 @@ MCP-сервер для **Yandex Metrica (Яндекс Метрика)**: спр
 <summary><b>Claude Code</b></summary>
 
 ```bash
-claude mcp add yandex-metrica -e YANDEX_METRIKA_TOKEN=ваш_токен -- npx -y mcp-yandex-metrica
+claude mcp add yandex-metrica -e YANDEX_METRIKA_TOKEN=ваш_токен -- npx -y mcp-yandex-metrica@latest
 ```
 
 Либо через маркетплейс плагинов — токен спросится диалогом при включении и сохранится
