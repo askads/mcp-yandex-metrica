@@ -7,6 +7,23 @@
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-08-07
+
+### Добавлено
+- Событие телеметрии `startup_failed`: сервер, умирающий из-за отсутствующих
+  credentials, сообщает об этом до выхода — с машинным кодом причины
+  (`missing_token`, `invalid_counter_id`). Раньше такие установки не
+  попадали в телеметрию вовсе:
+  процесс завершался раньше MCP-хендшейка, и «не смог настроить» было
+  неотличимо от «поставил и не пользуется». Отправляется только код —
+  ни имя, ни значение переменной окружения; отключение прежнее:
+  `ASKADS_TELEMETRY=0`.
+
+### Изменено
+- Конфигурация бросает `ConfigError` вместо немедленного `process.exit`, чтобы
+  точка входа успела отправить пинг. Сообщение об ошибке и код возврата для
+  пользователя не изменились; ожидание отправки ограничено прежними 2 с.
+
 ## [1.2.0] — 2026-08-05
 
 ### Добавлено
@@ -98,7 +115,9 @@
 - OAuth-токен (scope `metrika:read`), ретраи на 429/5xx с бэкоффом, таймаут запроса,
   `counterId` с дефолтом из `YANDEX_METRIKA_COUNTER_ID`.
 
-[Unreleased]: https://github.com/askads/mcp-yandex-metrica/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/askads/mcp-yandex-metrica/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.3.0
+[1.2.0]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.2.0
 [1.0.3]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.0.3
 [1.0.2]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.0.2
 [1.0.1]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.0.1
