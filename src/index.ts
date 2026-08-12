@@ -22,6 +22,26 @@ import { registerStatisticsTools } from "./tools/statistics.js";
 import { registerRawTool } from "./tools/raw.js";
 
 /**
+ * Prose returned in the MCP `initialize` result — the only text the calling model
+ * reads before it picks a tool. It carries what the tool list cannot: what this API
+ * is (and is not), where it refuses to write, and the failures that look like
+ * something else. Keep it dense; it is prepended to every session's context.
+ */
+const INSTRUCTIONS =
+  "Yandex Metrica is site web-analytics — visits, sources, behaviour and goal conversions for one " +
+  "counter — not Yandex Direct: nothing here creates, pauses or re-prices an ad campaign. No tool " +
+  "creates or edits a counter or a goal: every dedicated tool is read-only and raw_request is the " +
+  "only write path, and it reaches only the Metrica host, shared by the Management " +
+  "(management/v1/...) and Reporting (stat/v1/data) surfaces. Metric and dimension names are " +
+  "forwarded unvalidated, so they have to be exact; response labels follow Accept-Language, ru by " +
+  "default. Reads already retry 429/5xx with backoff behind a 60s per-request timeout, so repeating " +
+  "a failed call immediately will not help. An unfiltered list_counters coming back empty means the " +
+  "token belongs to a Yandex account without access to those counters, not an API failure; a 403 " +
+  "with error_type invalid_token means the token itself is expired or wrong. Metrica has no " +
+  "sandbox: every call hits live production data, and a raw_request POST/DELETE mutates real " +
+  "Metrica objects — it needs confirmWrite=true and nothing undoes it.";
+
+/**
  * Loads the config, reporting the drop-off if it is missing. An unconfigured
  * server dies before the MCP handshake, so this ping is the only trace such an
  * install ever leaves — and it has to be awaited, or process.exit() below would
@@ -46,10 +66,15 @@ async function main(): Promise<void> {
   const config = await loadConfigOrExit(telemetry);
   const client = new YandexMetrikaClient(config);
 
-  const server = new McpServer({
-    name: "mcp-yandex-metrica",
-    version: readVersion(),
-  });
+  // `instructions` lives in the SDK's ServerOptions (2nd argument) — putting it
+  // next to name/version would be silently dropped from the initialize result.
+  const server = new McpServer(
+    {
+      name: "mcp-yandex-metrica",
+      version: readVersion(),
+    },
+    { instructions: INSTRUCTIONS },
+  );
 
   instrumentToolCalls(server, telemetry);
   server.server.oninitialized = () => {

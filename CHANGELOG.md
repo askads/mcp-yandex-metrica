@@ -7,6 +7,15 @@
 
 ## [Unreleased]
 
+## [1.3.2] — 2026-08-12
+
+### Добавлено
+
+- Инструкции сервера. В ответе MCP `initialize` теперь едет короткая справка для вызывающей
+  модели: чем этот API является и чем не является, чего он не умеет, а также квоты, правила
+  повторов и обманчивые ошибки, влияющие на то, как им пользоваться. Раньше это знание жило
+  только в README, который модель не читает.
+
 ## [1.3.0] — 2026-08-07
 
 ### Добавлено
@@ -115,7 +124,8 @@
 - OAuth-токен (scope `metrika:read`), ретраи на 429/5xx с бэкоффом, таймаут запроса,
   `counterId` с дефолтом из `YANDEX_METRIKA_COUNTER_ID`.
 
-[Unreleased]: https://github.com/askads/mcp-yandex-metrica/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/askads/mcp-yandex-metrica/compare/v1.3.2...HEAD
+[1.3.2]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.3.2
 [1.3.0]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.3.0
 [1.2.0]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.2.0
 [1.0.3]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.0.3
