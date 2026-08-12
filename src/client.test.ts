@@ -148,7 +148,7 @@ test("request() rejects an absolute/foreign-origin path (SSRF) and makes no fetc
   for (const path of ["https://evil.example/steal", "http://evil.example/x", "\\\\evil.example/x"]) {
     const mock = mockFetch(() => new Response("{}", { status: 200 }));
     try {
-      await assert.rejects(() => makeClient().get(path), /foreign origin/);
+      await assert.rejects(() => makeClient().get(path), /чужой origin/);
       assert.equal(mock.calls.length, 0, `no fetch for ${path}`);
     } finally {
       mock.restore();
@@ -251,7 +251,7 @@ test("getAllStat() flags truncation loudly at the maxPages cap", async () => {
   try {
     const result = await makeClient().getAllStat({ ids: 1 }, 2);
     assert.equal(result._truncated, true);
-    assert.match(result._truncatedNote ?? "", /of 999999/);
+    assert.match(result._truncatedNote ?? "", /из 999999/);
   } finally {
     mock.restore();
   }
@@ -266,7 +266,7 @@ test("getAllStat() flags truncation at the row cap and stops early", async () =>
     // A small row cap stops after the first page even though maxPages is high.
     const result = await makeClient().getAllStat({ ids: 1 }, 100, { maxRows: 5 });
     assert.equal(result._truncated, true);
-    assert.match(result._truncatedNote ?? "", /autoPaginate cap/);
+    assert.match(result._truncatedNote ?? "", /лимите autoPaginate/);
     assert.equal(mock.calls.length, 1);
   } finally {
     mock.restore();
@@ -303,7 +303,7 @@ test("request() aborts and reports a timeout when the request hangs", async () =
     })) as typeof fetch;
   try {
     const client = makeClient({ timeoutMs: 10 });
-    await assert.rejects(() => client.get("stat/v1/data"), /timed out after 10ms/);
+    await assert.rejects(() => client.get("stat/v1/data"), /превысил таймаут 10 мс/);
   } finally {
     globalThis.fetch = original;
   }

@@ -28,18 +28,19 @@ import { registerRawTool } from "./tools/raw.js";
  * something else. Keep it dense; it is prepended to every session's context.
  */
 const INSTRUCTIONS =
-  "Yandex Metrica is site web-analytics — visits, sources, behaviour and goal conversions for one " +
-  "counter — not Yandex Direct: nothing here creates, pauses or re-prices an ad campaign. No tool " +
-  "creates or edits a counter or a goal: every dedicated tool is read-only and raw_request is the " +
-  "only write path, and it reaches only the Metrica host, shared by the Management " +
-  "(management/v1/...) and Reporting (stat/v1/data) surfaces. Metric and dimension names are " +
-  "forwarded unvalidated, so they have to be exact; response labels follow Accept-Language, ru by " +
-  "default. Reads already retry 429/5xx with backoff behind a 60s per-request timeout, so repeating " +
-  "a failed call immediately will not help. An unfiltered list_counters coming back empty means the " +
-  "token belongs to a Yandex account without access to those counters, not an API failure; a 403 " +
-  "with error_type invalid_token means the token itself is expired or wrong. Metrica has no " +
-  "sandbox: every call hits live production data, and a raw_request POST/DELETE mutates real " +
-  "Metrica objects — it needs confirmWrite=true and nothing undoes it.";
+  "Яндекс Метрика — это веб-аналитика сайта: визиты, источники, поведение и конверсии по целям " +
+  "одного счётчика, а не Яндекс Директ: здесь ничто не создаёт рекламные кампании, не " +
+  "останавливает их и не меняет ставки. Ни один инструмент не создаёт и не редактирует счётчик " +
+  "или цель: специализированные инструменты работают только на чтение, единственный путь записи — " +
+  "raw_request, и он ходит только на хост Метрики, общий для Management (management/v1/...) и " +
+  "Reporting (stat/v1/data). Имена метрик и измерений передаются без проверки, поэтому должны " +
+  "быть точными; подписи в ответе зависят от Accept-Language, по умолчанию ru. Чтения уже " +
+  "повторяются при 429/5xx с нарастающей паузой, таймаут запроса — 60 с, поэтому немедленный " +
+  "повтор упавшего вызова не поможет. Пустой ответ list_counters без фильтров означает, что токен " +
+  "принадлежит аккаунту Яндекса без доступа к этим счётчикам, а не сбой API; 403 с error_type " +
+  "invalid_token означает, что просрочен или неверен сам токен. У Метрики нет песочницы: любой " +
+  "вызов идёт по живым боевым данным, а POST/DELETE через raw_request меняет реальные объекты " +
+  "Метрики — ему нужен confirmWrite=true, и откатить это нечем.";
 
 /**
  * Loads the config, reporting the drop-off if it is missing. An unconfigured
@@ -52,7 +53,7 @@ async function loadConfigOrExit(telemetry: Telemetry): Promise<YandexMetrikaConf
     return loadConfig();
   } catch (err) {
     if (!(err instanceof ConfigError)) throw err;
-    console.error(`Error: ${err.message}`);
+    console.error(`Ошибка: ${err.message}`);
     await telemetry.sendBlocking("startup_failed", { reason: err.reason });
     process.exit(1);
   }
@@ -88,10 +89,10 @@ async function main(): Promise<void> {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("mcp-yandex-metrica running on stdio");
+  console.error("mcp-yandex-metrica запущен на stdio");
 }
 
 main().catch((err) => {
-  console.error("Fatal error starting mcp-yandex-metrica:", err);
+  console.error("Не удалось запустить mcp-yandex-metrica:", err);
   process.exit(1);
 });

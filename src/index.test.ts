@@ -43,7 +43,7 @@ test("initialize carries non-empty server instructions", async () => {
       `instructions must stay within budget, got ${instructions.length} chars`,
     );
     // The facts the tool list cannot state: read-only surface and the write gate.
-    assert.match(instructions, /read-only/);
+    assert.match(instructions, /только на чтение/);
     assert.match(instructions, /confirmWrite=true/);
   } finally {
     await client.close();

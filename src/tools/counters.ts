@@ -7,23 +7,28 @@ export function registerCounterTools(server: McpServer, client: YandexMetrikaCli
   server.registerTool(
     "list_counters",
     {
-      title: "List Metrica counters",
+      title: "Список счётчиков Метрики",
       annotations: READ_ONLY,
       description:
-        "Lists the Yandex Metrica counters the token can access (Management API). Each counter has id, name and site2 (site domain) — use the id with get_statistics and list_goals. Filter by a name/site substring with `search`.",
+        "Возвращает счётчики Яндекс Метрики, доступные токену (Management API). У каждого счётчика есть id, name и site2 (домен сайта) — id используется в get_statistics и list_goals. Фильтр по подстроке имени или сайта задаётся параметром `search`.",
       inputSchema: {
         search: z
           .string()
           .optional()
-          .describe("Case-insensitive substring to filter counters by name or site."),
+          .describe("Подстрока для фильтра счётчиков по имени или сайту, без учёта регистра."),
         perPage: z
           .number()
           .int()
           .min(1)
           .max(1000)
           .optional()
-          .describe("Max counters to return. Default 100."),
-        offset: z.number().int().min(1).optional().describe("1-based offset for pagination."),
+          .describe("Максимум счётчиков в ответе. По умолчанию 100."),
+        offset: z
+          .number()
+          .int()
+          .min(1)
+          .optional()
+          .describe("Смещение для постраничной выдачи, отсчёт с 1."),
       },
     },
     async ({ search, perPage, offset }) => {
@@ -42,23 +47,25 @@ export function registerCounterTools(server: McpServer, client: YandexMetrikaCli
   server.registerTool(
     "list_goals",
     {
-      title: "List counter goals",
+      title: "Список целей счётчика",
       annotations: READ_ONLY,
       description:
-        "Lists the goals (conversions) configured on a Metrica counter (Management API). Goal ids are needed to read conversion metrics (ym:s:goal<id>reaches / ym:s:goal<id>conversionRate) in get_statistics. counterId defaults to YANDEX_METRIKA_COUNTER_ID when omitted.",
+        "Возвращает цели (конверсии), настроенные на счётчике Метрики (Management API). Идентификаторы целей нужны, чтобы запросить метрики конверсий (ym:s:goal<id>reaches / ym:s:goal<id>conversionRate) в get_statistics. Если counterId не передан, берётся YANDEX_METRIKA_COUNTER_ID.",
       inputSchema: {
         counterId: z
           .number()
           .int()
           .optional()
-          .describe("Counter id. Defaults to YANDEX_METRIKA_COUNTER_ID."),
+          .describe("Идентификатор счётчика. По умолчанию YANDEX_METRIKA_COUNTER_ID."),
       },
     },
     async ({ counterId }) => {
       try {
         const counter = resolveCounter(counterId, client);
         if (counter === undefined) {
-          return fail("No counter id: pass counterId or set YANDEX_METRIKA_COUNTER_ID.");
+          return fail(
+            "Не задан идентификатор счётчика: нужно передать counterId или задать YANDEX_METRIKA_COUNTER_ID.",
+          );
         }
         const result = await client.get(`management/v1/counter/${counter}/goals`);
         return ok(result);

@@ -94,7 +94,7 @@ export class YandexMetrikaClient {
       return { res, text };
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
-        throw new Error(`Request to "${label}" timed out after ${this.timeoutMs}ms`);
+        throw new Error(`Запрос к "${label}" превысил таймаут ${this.timeoutMs} мс`);
       }
       throw err;
     } finally {
@@ -110,7 +110,7 @@ export class YandexMetrikaClient {
     // that does not resolve back onto the configured API origin.
     if (url.origin !== new URL(this.base).origin) {
       throw new Error(
-        `raw_request path must be a relative API path (resolved to foreign origin ${url.origin})`,
+        `Путь raw_request должен быть относительным путём API (получился чужой origin ${url.origin})`,
       );
     }
     if (query) {
@@ -230,9 +230,9 @@ export class YandexMetrikaClient {
       if (data.length >= maxRows || bytes >= maxBytes) {
         truncated = true;
         cappedNote =
-          `Stopped at the autoPaginate cap (${data.length} rows / ${bytes} bytes); ` +
-          `returned ${data.length} of ${totalRows} rows. ` +
-          "Narrow the date range, dimensions or filters to get the rest.";
+          `Остановлено на лимите autoPaginate (строк: ${data.length}, байт: ${bytes}); ` +
+          `возвращено ${data.length} из ${totalRows} строк. ` +
+          "Чтобы получить остальные строки, нужно сузить период, набор измерений или фильтры.";
         break;
       }
 
@@ -244,8 +244,8 @@ export class YandexMetrikaClient {
       result._truncated = true;
       result._truncatedNote =
         cappedNote ??
-        `Stopped at the ${maxPages}-page cap; returned ${data.length} of ${totalRows} rows. ` +
-          "Narrow the date range, dimensions or filters to get the rest.";
+        `Остановлено на лимите страниц (${maxPages}); возвращено ${data.length} из ${totalRows} строк. ` +
+          "Чтобы получить остальные строки, нужно сузить период, набор измерений или фильтры.";
     }
     return result;
   }

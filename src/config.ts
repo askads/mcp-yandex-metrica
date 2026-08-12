@@ -20,7 +20,7 @@ export function loadConfig(): YandexMetrikaConfig {
   const token = process.env.YANDEX_METRIKA_TOKEN;
   if (!token) {
     throw new ConfigError(
-      "YANDEX_METRIKA_TOKEN environment variable is required.",
+      "Требуется переменная окружения YANDEX_METRIKA_TOKEN.",
       "missing_token",
     );
   }
@@ -29,7 +29,7 @@ export function loadConfig(): YandexMetrikaConfig {
   const counterId = counterRaw !== undefined && counterRaw !== "" ? Number(counterRaw) : undefined;
   if (counterId !== undefined && !Number.isFinite(counterId)) {
     throw new ConfigError(
-      `YANDEX_METRIKA_COUNTER_ID must be a number, got "${counterRaw}".`,
+      `YANDEX_METRIKA_COUNTER_ID должен быть числом, получено "${counterRaw}".`,
       "invalid_counter_id",
     );
   }

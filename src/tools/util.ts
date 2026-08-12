@@ -24,7 +24,7 @@ export const metrikaDate = () =>
     .string()
     .regex(
       /^(\d{4}-\d{2}-\d{2}|today|yesterday|\d+daysAgo)$/,
-      "Must be YYYY-MM-DD or a relative token (today, yesterday, NdaysAgo)",
+      "Ожидается YYYY-MM-DD или относительная дата (today, yesterday, NdaysAgo)",
     );
 
 /** Wraps a value as a compact-JSON tool result (compact: the consumer is an LLM). */
@@ -35,7 +35,7 @@ export function ok(data: unknown): CallToolResult {
 
 export function fail(err: unknown): CallToolResult {
   const message = err instanceof Error ? err.message : String(err);
-  return { content: [{ type: "text", text: `Error: ${message}` }], isError: true };
+  return { content: [{ type: "text", text: `Ошибка: ${message}` }], isError: true };
 }
 
 /** Drops keys whose value is `undefined` so they are not sent to the API. */
