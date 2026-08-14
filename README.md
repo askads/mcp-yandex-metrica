@@ -196,13 +196,6 @@ args = ["-y", "mcp-yandex-metrica@latest"]
 - [Все инструменты](https://github.com/askads/mcp-yandex-metrica/blob/main/docs/TOOLS.md)
 - [Разработка](https://github.com/askads/mcp-yandex-metrica/blob/main/docs/DEVELOPMENT.md)
 
-## Смотрите также
-
-- **[Ask Ads](https://askads.ru)** — чат-аналитик и «Сторож» рекламных кабинетов от авторов
-  этого сервера: алерты о сливах бюджета и поломках трекинга — в Telegram.
-- **[askads/claude-plugins](https://github.com/askads/claude-plugins)** — маркетплейс плагинов
-  Claude: серверы Ask Ads ставятся одной командой.
-
 ## Поддержка
 
 Вопросы, идеи и доработки — пишите в Telegram: [@gistrec](http://t.me/gistrec).
