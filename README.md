@@ -148,6 +148,12 @@ args = ["-y", "mcp-yandex-metrica@latest"]
 
 ## Настройка
 
+Настраивать нечего: всё нужное сервер спрашивает в диалоге. Переменные окружения пригодятся
+только для CI и нестандартных случаев.
+
+<details>
+<summary>Переменные окружения и своё OAuth-приложение</summary>
+
 Все переменные необязательные — сервер работает без единой из них.
 
 | Переменная | По умолчанию | Описание |
@@ -160,8 +166,7 @@ args = ["-y", "mcp-yandex-metrica@latest"]
 | `YANDEX_METRIKA_TIMEOUT_MS` | `60000` | Таймаут запроса, мс. |
 | `YANDEX_METRIKA_MAX_RETRIES` | `3` | Повторы при 429/5xx. |
 
-<details>
-<summary>Своё OAuth-приложение — если не хотите пользоваться приложением Ask Ads</summary>
+**Своё OAuth-приложение** — если не хотите пользоваться приложением Ask Ads:
 
 1. Откройте [oauth.yandex.ru](https://oauth.yandex.ru/) → **Создать приложение**.
    Платформа — «Веб-сервисы», Redirect URI — `https://oauth.yandex.ru/verification_code`.
