@@ -89,6 +89,12 @@ claude mcp add yandex-metrica -- npx -y mcp-yandex-metrica@latest
 <details>
 <summary><b>OpenAI Codex</b></summary>
 
+```bash
+codex mcp add yandex-metrica -- npx -y mcp-yandex-metrica@latest
+```
+
+Или вручную в `~/.codex/config.toml`:
+
 ```toml
 [mcp_servers.yandex-metrica]
 command = "npx"
@@ -100,7 +106,11 @@ args = ["-y", "mcp-yandex-metrica@latest"]
 <details>
 <summary><b>VS Code</b></summary>
 
-`.vscode/mcp.json` — ключ `servers` (не `mcpServers`)
+```bash
+code --add-mcp '{"name":"yandex-metrica","command":"npx","args":["-y","mcp-yandex-metrica@latest"]}'
+```
+
+Или вручную в `.vscode/mcp.json` — обратите внимание на ключ `servers` (не `mcpServers`):
 
 ```json
 {
