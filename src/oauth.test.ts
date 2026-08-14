@@ -116,6 +116,23 @@ test("an expired code explains that it is one-shot and 10 minutes long", async (
   );
 });
 
+/**
+ * What Yandex actually returns for a wrong or expired code — verified against the
+ * live endpoint. Handling only the spec's `invalid_grant` sent the most common
+ * failure of the whole flow (the code expires in 10 minutes) to the generic
+ * branch, which relays "Invalid code" without saying a fresh one is needed.
+ */
+test("bad_verification_code gets the same advice as invalid_grant", async () => {
+  const { impl } = fakeFetch({
+    status: 400,
+    body: { error: "bad_verification_code", error_description: "Invalid code" },
+  });
+  await assert.rejects(
+    () => exchangeCode({ code: "nope", verifier: "v", clientId: "c", fetchImpl: impl }),
+    /10 минут.*start_login/s,
+  );
+});
+
 test("a bad app id is not reported as a bad code", async () => {
   const { impl } = fakeFetch({ status: 400, body: { error: "invalid_client" } });
   await assert.rejects(

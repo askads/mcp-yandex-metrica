@@ -202,6 +202,10 @@ function describeOAuthError(status: number, body: unknown): string {
   const description = typeof obj.error_description === "string" ? obj.error_description : "";
 
   switch (code) {
+    // Yandex answers a wrong or expired code with `bad_verification_code`, not the
+    // `invalid_grant` the OAuth spec suggests — and since the code lives only 10
+    // minutes, this is the single most likely failure of the whole flow.
+    case "bad_verification_code":
     case "invalid_grant":
       return (
         "Код подтверждения не принят: он живёт 10 минут и одноразовый. " +
