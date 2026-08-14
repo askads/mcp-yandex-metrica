@@ -15,15 +15,17 @@ export class ConfigError extends Error {
   }
 }
 
-/** Builds the client config from environment variables, throwing ConfigError if one is bad. */
+/**
+ * Builds the client config from environment variables.
+ *
+ * A missing token is NOT an error here: the server starts anyway and the token
+ * is resolved per request (env → stored credentials), so an unconfigured install
+ * can log in from the chat instead of dying before the MCP handshake — which is
+ * where it used to leave the user with a silent red cross and nothing to read.
+ * A malformed value still throws, because guessing what the user meant is worse.
+ */
 export function loadConfig(): YandexMetrikaConfig {
-  const token = process.env.YANDEX_METRIKA_TOKEN;
-  if (!token) {
-    throw new ConfigError(
-      "Требуется переменная окружения YANDEX_METRIKA_TOKEN.",
-      "missing_token",
-    );
-  }
+  const token = process.env.YANDEX_METRIKA_TOKEN || undefined;
 
   const counterRaw = process.env.YANDEX_METRIKA_COUNTER_ID;
   const counterId = counterRaw !== undefined && counterRaw !== "" ? Number(counterRaw) : undefined;
