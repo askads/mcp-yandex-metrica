@@ -1,5 +1,10 @@
 export interface YandexMetrikaConfig {
-  token: string;
+  /**
+   * Token from YANDEX_METRIKA_TOKEN. Optional: an unconfigured server still
+   * starts and serves the login tools, resolving the token per request instead
+   * (see TokenStore) — that is what lets a login take effect without a restart.
+   */
+  token?: string;
   /** Default counter id used when a tool call omits counterId. Optional. */
   counterId?: number;
   /** Accept-Language header sent with every request. */

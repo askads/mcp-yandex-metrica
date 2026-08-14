@@ -60,7 +60,18 @@ export interface ClientInfo {
  * `startup_failed` when the process dies on missing credentials — the only
  * signal that someone installed the server but never got a key in.
  */
-export type TelemetryEvent = "server_start" | "tool_call" | "startup_failed";
+/**
+ * `startup_failed` predates the login flow and still means "config unusable at
+ * startup"; it is kept unchanged so the historical funnel stays comparable.
+ * `unconfigured_start` is its live counterpart — the server now survives that
+ * state and completes the handshake, so this is the first event that can carry
+ * the client's name for an install that has no token yet.
+ */
+export type TelemetryEvent =
+  | "server_start"
+  | "tool_call"
+  | "startup_failed"
+  | "unconfigured_start";
 
 /** `tool` rides with tool_call, `reason` with startup_failed. */
 export interface EventFields {

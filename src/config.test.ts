@@ -36,11 +36,24 @@ function reasonOf(vars: Record<string, string | undefined>): string {
   return caught.reason;
 }
 
-test("a missing token reports missing_token", () => {
-  assert.equal(
-    reasonOf({ YANDEX_METRIKA_TOKEN: undefined, YANDEX_METRIKA_COUNTER_ID: undefined }),
-    "missing_token",
-  );
+/**
+ * A missing token used to throw, which killed the process before the MCP
+ * handshake and left the user with a silent failure. It is now a survivable
+ * state: the server starts, serves the login tools and resolves the token per
+ * request. Pinned here because reverting it would restore that dead end.
+ */
+test("a missing token does not throw — the server must start and offer login", () => {
+  withEnv({ YANDEX_METRIKA_TOKEN: undefined, YANDEX_METRIKA_COUNTER_ID: undefined }, () => {
+    const config = loadConfig();
+    assert.equal(config.token, undefined);
+    assert.equal(config.apiBase, "https://api-metrika.yandex.net");
+  });
+});
+
+test("an empty token is treated as absent, not as an empty credential", () => {
+  withEnv({ YANDEX_METRIKA_TOKEN: "", YANDEX_METRIKA_COUNTER_ID: undefined }, () => {
+    assert.equal(loadConfig().token, undefined);
+  });
 });
 
 test("a non-numeric counter id is its own reason", () => {

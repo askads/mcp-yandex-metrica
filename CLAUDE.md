@@ -23,8 +23,19 @@ More detail in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Tool list: [docs/TOOL
   on 429 + 5xx (honors `Retry-After`), `getAllStat` limit/offset pagination of the Stat
   API, `YandexMetrikaError(status, body)`. The client targets a full path
   ("management/v1/..." or "stat/v1/data") — Metrica has two API surfaces on one host.
-- `src/tools/*.ts` — `counters` (list_counters, list_goals), `statistics` (get_statistics),
-  `raw` (raw_request); each exports `register<Name>Tools(server, client)`.
+- `src/oauth.ts` — the OAuth flow: PKCE pair (S256), authorize URL against
+  `https://oauth.yandex.ru/verification_code`, code exchange and refresh. **No `client_secret`** —
+  this is a public client, and a secret inside an npm package would protect nothing. The pending
+  verifier lives in one module-level slot (one stdio server = one user); a second `start_login`
+  replaces it.
+- `src/credentials.ts` — `~/.config/mcp-yandex-metrica/credentials.json`, mode `0600`. An
+  unparsable file reads as "not connected", never as an empty token.
+- `src/auth.ts` — `TokenStore`: resolves the token per request (env wins over stored), refreshes
+  on expiry, and raises `AuthRequiredError` whose *message* is the product — it is the only text
+  the user ever sees about a missing token.
+- `src/tools/*.ts` — `auth` (auth_status, start_login, finish_login, logout), `counters`
+  (list_counters, list_goals), `statistics` (get_statistics), `raw` (raw_request); each exports
+  `register<Name>Tools(server, client)`.
 - `src/tools/util.ts` — shared helpers (see conventions below).
 - `src/index.ts` — wires every `register*` into the McpServer.
 - `src/telemetry.ts` — anonymous usage pings (ids/names/versions only, never data or
@@ -37,6 +48,16 @@ More detail in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Tool list: [docs/TOOL
 
 ## Conventions (do not break)
 
+- **Never exit because of configuration.** A server that dies before the MCP handshake leaves
+  the user with a red cross and no reason — telemetry showed that state accounted for nearly
+  every unconfigured install, and 97% of them never recovered. Missing credentials are a
+  survivable state: start, serve the login tools, and answer data calls with `AuthRequiredError`.
+  `config.test.ts` and `index.test.ts` pin this.
+- **Auth failures are not transport failures.** `AuthRequiredError` is rethrown before the
+  retry/backoff branch in `request()` — retrying it burns seconds of backoff before the user
+  sees the one message that helps. Pinned by a timing assertion in `client.test.ts`.
+- **The token is resolved per request, never cached on the client.** That is what makes
+  `finish_login` take effect mid-session without a client restart.
 - **Read-only MVP.** Only get/list tools are exposed; the single write path is
   `raw_request`, gated by HTTP method (`isReadMethod` = GET only; POST/DELETE need
   `confirmWrite=true`).

@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { registerAuthTools } from "./auth.js";
 import { registerCounterTools } from "./counters.js";
 import { registerStatisticsTools } from "./statistics.js";
 import { registerRawTool } from "./raw.js";
@@ -21,6 +22,7 @@ function collectAnnotations(): Record<string, Annotations | undefined> {
   };
   const registrars = [registerCounterTools, registerStatisticsTools, registerRawTool];
   for (const register of registrars) register(server as never, {} as never);
+  registerAuthTools(server as never, {} as never, {} as never);
   return annotations;
 }
 
@@ -30,7 +32,16 @@ test("every tool declares annotations with all four hints", () => {
   const names = Object.keys(ANN);
   assert.deepEqual(
     names.sort(),
-    ["get_statistics", "list_counters", "list_goals", "raw_request"],
+    [
+      "auth_status",
+      "finish_login",
+      "get_statistics",
+      "list_counters",
+      "list_goals",
+      "logout",
+      "raw_request",
+      "start_login",
+    ],
   );
   for (const [name, a] of Object.entries(ANN)) {
     assert.ok(a, `${name} is missing annotations`);
@@ -54,4 +65,18 @@ test("read tools are read-only, non-destructive, idempotent", () => {
 test("raw_request is flagged destructive (it can POST/DELETE)", () => {
   assert.equal(ANN.raw_request?.readOnlyHint, false);
   assert.equal(ANN.raw_request?.destructiveHint, true);
+});
+
+test("login tools are hinted by what they touch, not by what they talk to", () => {
+  // Reading state or minting a URL changes nothing.
+  for (const name of ["auth_status", "start_login"]) {
+    assert.equal(ANN[name]?.readOnlyHint, true, `${name} should be readOnly`);
+    assert.equal(ANN[name]?.destructiveHint, false, `${name} should be non-destructive`);
+  }
+  // finish_login writes the credentials file; logout deletes it. A client that
+  // auto-approves reads must still prompt before either.
+  assert.equal(ANN.finish_login?.readOnlyHint, false);
+  assert.equal(ANN.finish_login?.destructiveHint, false);
+  assert.equal(ANN.logout?.readOnlyHint, false);
+  assert.equal(ANN.logout?.destructiveHint, true);
 });

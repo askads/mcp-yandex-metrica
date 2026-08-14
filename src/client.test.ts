@@ -1,5 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { AuthRequiredError } from "./auth.js";
 import { YandexMetrikaClient, STAT_PAGE_LIMIT } from "./client.js";
 import { YandexMetrikaError } from "./types.js";
 
@@ -306,5 +310,35 @@ test("request() aborts and reports a timeout when the request hangs", async () =
     await assert.rejects(() => client.get("stat/v1/data"), /превысил таймаут 10 мс/);
   } finally {
     globalThis.fetch = original;
+  }
+});
+
+test("a missing token fails immediately — no retries, no backoff, no request", async () => {
+  const calls: string[] = [];
+  const fetchImpl = (async (url: string) => {
+    calls.push(String(url));
+    throw new Error("network must never be reached");
+  }) as unknown as typeof fetch;
+
+  const saved = { fetch: globalThis.fetch, xdg: process.env.XDG_CONFIG_HOME };
+  globalThis.fetch = fetchImpl;
+  process.env.XDG_CONFIG_HOME = mkdtempSync(join(tmpdir(), "mcp-metrica-client-"));
+  try {
+    // maxRetries is deliberately high: if the auth error were treated as a
+    // transport failure this would sit in backoff for seconds before answering.
+    const client = new YandexMetrikaClient({
+      apiBase: "https://api-metrika.yandex.net",
+      lang: "ru",
+      maxRetries: 5,
+      retryBaseMs: 1000,
+    });
+    const started = Date.now();
+    await assert.rejects(() => client.get("management/v1/counters"), AuthRequiredError);
+    assert.ok(Date.now() - started < 500, "the answer must be immediate, not backed off");
+    assert.equal(calls.length, 0, "an unauthenticated call must never hit the API");
+  } finally {
+    globalThis.fetch = saved.fetch;
+    if (saved.xdg === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = saved.xdg;
   }
 });

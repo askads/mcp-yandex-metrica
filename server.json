@@ -8,22 +8,27 @@
     "url": "https://github.com/askads/mcp-yandex-metrica",
     "source": "github"
   },
-  "version": "1.3.2",
+  "version": "1.4.0",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "mcp-yandex-metrica",
-      "version": "1.3.2",
+      "version": "1.4.0",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
         {
           "name": "YANDEX_METRIKA_TOKEN",
-          "description": "Yandex Metrica OAuth token (scope metrika:read) — read access to analytics data. Treat it as a secret.",
-          "isRequired": true,
+          "description": "Yandex Metrica OAuth token (scope metrika:read) — read access to analytics data. Treat it as a secret. Optional: without it the server starts anyway and connects through the in-chat login (start_login / finish_login).",
+          "isRequired": false,
           "isSecret": true
+        },
+        {
+          "name": "YANDEX_METRIKA_OAUTH_CLIENT_ID",
+          "description": "ClientID of your own Yandex OAuth app for the in-chat login. Defaults to the Ask Ads app scoped to metrika:read.",
+          "isRequired": false
         },
         {
           "name": "YANDEX_METRIKA_COUNTER_ID",

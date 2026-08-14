@@ -1,3 +1,4 @@
+import { AuthRequiredError, TokenStore } from "./auth.js";
 import type { YandexMetrikaConfig } from "./types.js";
 import { YandexMetrikaError } from "./types.js";
 
@@ -47,12 +48,20 @@ export class YandexMetrikaClient {
   private readonly maxRetries: number;
   private readonly retryBaseMs: number;
 
-  constructor(private readonly config: YandexMetrikaConfig) {
+  private readonly tokens: TokenStore;
+
+  constructor(
+    private readonly config: YandexMetrikaConfig,
+    tokens?: TokenStore,
+  ) {
     // Normalize to a trailing slash so relative paths ("stat/v1/data") resolve.
     this.base = config.apiBase.endsWith("/") ? config.apiBase : config.apiBase + "/";
     this.timeoutMs = config.timeoutMs ?? 60_000;
     this.maxRetries = config.maxRetries ?? 3;
     this.retryBaseMs = config.retryBaseMs ?? 500;
+    // Default store keeps the old contract for callers that pass a plain config
+    // (tests, smoke): config.token wins, stored credentials are the fallback.
+    this.tokens = tokens ?? new TokenStore(config.token);
   }
 
   /** Default counter id from config (env), used when a tool omits counterId. */
@@ -60,9 +69,13 @@ export class YandexMetrikaClient {
     return this.config.counterId;
   }
 
-  private headers(extra?: Record<string, string>): Record<string, string> {
+  /**
+   * Resolved per request, never cached on the instance: `finish_login` writes a
+   * new token to disk mid-session and the very next call has to pick it up.
+   */
+  private async headers(extra?: Record<string, string>): Promise<Record<string, string>> {
     return {
-      Authorization: `OAuth ${this.config.token}`,
+      Authorization: `OAuth ${await this.tokens.getToken()}`,
       "Accept-Language": this.config.lang,
       ...extra,
     };
@@ -133,6 +146,9 @@ export class YandexMetrikaClient {
     // committed on the backend (but returned 5xx / dropped the connection) would
     // duplicate the write.
     const idempotent = method === "GET";
+    // A stored token can be revoked (or die early) long before its stated expiry,
+    // and only the API knows: one silent re-mint + replay per request, then give up.
+    let refreshed = false;
 
     for (let attempt = 0; ; attempt++) {
       const url = this.buildUrl(path, opts.query);
@@ -144,12 +160,16 @@ export class YandexMetrikaClient {
           url,
           {
             method,
-            headers: this.headers(hasBody ? { "Content-Type": "application/json" } : undefined),
+            headers: await this.headers(hasBody ? { "Content-Type": "application/json" } : undefined),
             body: hasBody ? JSON.stringify(opts.body) : undefined,
           },
           path,
         ));
       } catch (err) {
+        // "Not connected" is raised while building the auth header, inside this
+        // try — but it is not transport trouble: retrying burns the full backoff
+        // (seconds) before the user sees the one message that would help them.
+        if (err instanceof AuthRequiredError) throw err;
         // Network errors / timeouts (ECONNRESET, DNS, AbortError): retry only for
         // idempotent GET; on the last attempt rethrow the original error.
         if (idempotent && attempt < this.maxRetries) {
@@ -174,6 +194,26 @@ export class YandexMetrikaClient {
           data = JSON.parse(text);
         } catch {
           data = text;
+        }
+      }
+
+      // Metrica answers a dead token with 401, or 403 + error_type invalid_token.
+      // Re-mint once and replay; the retry budget above is for transport trouble
+      // and must not be spent here.
+      if (!res.ok && !refreshed && isAuthFailure(res.status, data) && this.tokens.canRefresh()) {
+        refreshed = true;
+        try {
+          await this.tokens.refresh();
+          attempt--;
+          continue;
+        } catch (err) {
+          // Refresh itself failed (revoked in Yandex ID, network down): surface the
+          // actionable message instead of the original 403.
+          if (err instanceof AuthRequiredError) throw err;
+          throw new AuthRequiredError(
+            `Не удалось обновить токен Метрики: ${err instanceof Error ? err.message : String(err)}. ` +
+              "Вызовите start_login и подключитесь заново.",
+          );
         }
       }
 
@@ -253,4 +293,16 @@ export class YandexMetrikaClient {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * A dead token, as opposed to "this account may not see that counter": 401 is
+ * unambiguous, 403 only counts when Metrica names `invalid_token` — a plain 403
+ * is a permission problem that re-minting would not fix.
+ */
+function isAuthFailure(status: number, body: unknown): boolean {
+  if (status === 401) return true;
+  if (status !== 403) return false;
+  const errors = (body as { errors?: Array<{ error_type?: string }> } | undefined)?.errors;
+  return Array.isArray(errors) && errors.some((e) => e?.error_type === "invalid_token");
 }
