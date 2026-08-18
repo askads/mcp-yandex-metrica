@@ -99,7 +99,10 @@ export class TokenStore {
       clientId: oauthClientId(),
       fetchImpl: this.fetchImpl,
     });
-    return this.save(response);
+    // Yandex may answer a refresh without a new refresh_token. Overwriting the
+    // stored one with undefined would silently turn the login into "expires
+    // once" — keep the token that just proved it works.
+    return this.save({ ...response, refresh_token: response.refresh_token ?? token });
   }
 
   /** True when a stored refresh token exists — i.e. a retry after 401 is worth trying. */
