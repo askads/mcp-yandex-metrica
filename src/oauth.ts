@@ -47,18 +47,19 @@ export function createPkce(): PkcePair {
   return { verifier, challenge };
 }
 
-export function buildAuthorizeUrl(params: {
-  clientId: string;
-  challenge: string;
-  state: string;
-}): string {
+/**
+ * No `state` parameter on purpose: state exists to tie a redirect back to the
+ * session that started it, and this flow has no redirect — the user copies the
+ * code off Yandex's page by hand, and PKCE already binds the exchange to the
+ * verifier held in this process.
+ */
+export function buildAuthorizeUrl(params: { clientId: string; challenge: string }): string {
   const url = new URL(AUTHORIZE_URL);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("client_id", params.clientId);
   url.searchParams.set("redirect_uri", VERIFICATION_REDIRECT);
   url.searchParams.set("code_challenge", params.challenge);
   url.searchParams.set("code_challenge_method", "S256");
-  url.searchParams.set("state", params.state);
   url.searchParams.set("scope", SCOPE);
   // Always show the consent screen: a user who authorized this app earlier would
   // otherwise be handed the old token back, with whatever rights it carried then.
@@ -78,10 +79,8 @@ export interface TokenResponse {
 /** A pending login: the verifier that must accompany the code the user pastes back. */
 interface PendingLogin {
   verifier: string;
-  state: string;
   clientId: string;
   createdAt: number;
-  authorizeUrl: string;
 }
 
 // One slot, not a map: a single stdio server serves one user, and a second
@@ -90,13 +89,12 @@ interface PendingLogin {
 let pending: PendingLogin | undefined;
 
 /** Starts a login: mints the PKCE pair, remembers the verifier, returns the URL to open. */
-export function startLogin(now = Date.now()): { authorizeUrl: string; state: string } {
+export function startLogin(now = Date.now()): { authorizeUrl: string } {
   const clientId = oauthClientId();
   const { verifier, challenge } = createPkce();
-  const state = randomBytes(16).toString("hex");
-  const authorizeUrl = buildAuthorizeUrl({ clientId, challenge, state });
-  pending = { verifier, state, clientId, createdAt: now, authorizeUrl };
-  return { authorizeUrl, state };
+  const authorizeUrl = buildAuthorizeUrl({ clientId, challenge });
+  pending = { verifier, clientId, createdAt: now };
+  return { authorizeUrl };
 }
 
 export function pendingLogin(now = Date.now()): PendingLogin | undefined {

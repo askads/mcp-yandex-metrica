@@ -100,9 +100,29 @@ export function registerAuthTools(
         // Prove it works before telling the user it does: a token that authenticates
         // but sees no counters is a wrong-account login, and saying "готово" there
         // just moves the confusion one step later.
-        const counters = await client.get<{ counters?: unknown[] }>("management/v1/counters", {
-          per_page: 5,
-        });
+        let counters: { counters?: unknown[] };
+        try {
+          counters = await client.get<{ counters?: unknown[] }>("management/v1/counters", {
+            per_page: 5,
+          });
+        } catch (verifyError) {
+          // The login itself succeeded — the token is already on disk. A bare
+          // isError here would send the user to redo a login that does not need
+          // redoing, so the failed check is reported inside a successful answer.
+          const message =
+            verifyError instanceof Error ? verifyError.message : String(verifyError);
+          return ok({
+            connected: true,
+            verified: false,
+            storedAt: tokens.status().path,
+            grantedScope: response.scope,
+            note:
+              "Токен получен и сохранён, вход выполнен. " +
+              `Проверочный вызов к API не удался: ${message}. ` +
+              "Скорее всего, подключение работает — попробуйте любой инструмент данных; " +
+              "если ошибка повторится, это проблема доступа токена, а не входа.",
+          });
+        }
         const found = Array.isArray(counters.counters) ? counters.counters.length : 0;
 
         return ok({

@@ -125,6 +125,8 @@ test("start_login hands back a PKCE authorize URL without a secret", async () =>
     const url = new URL(payload.authorizeUrl ?? "");
     assert.equal(url.searchParams.get("code_challenge_method"), "S256");
     assert.equal(url.searchParams.get("response_type"), "code");
+    // No redirect, no session to tie back — the URL carries no `state`.
+    assert.equal(url.searchParams.get("state"), null);
     assert.ok(!url.search.includes("client_secret"), "a public client must not leak a secret");
   } finally {
     await client.close();
