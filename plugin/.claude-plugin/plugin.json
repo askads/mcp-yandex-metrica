@@ -1,7 +1,7 @@
 {
   "name": "mcp-yandex-metrica",
   "displayName": "Yandex Metrica MCP",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Read Yandex Metrica web analytics from Claude: counters, goals, and traffic and conversion statistics.",
   "author": {
     "name": "gistrec",
@@ -42,7 +42,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "mcp-yandex-metrica@1.4.1"
+        "mcp-yandex-metrica@1.4.2"
       ],
       "env": {
         "YANDEX_METRIKA_TOKEN": "${user_config.token}",
