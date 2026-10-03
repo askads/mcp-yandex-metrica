@@ -1,0 +1,53 @@
+{
+  "name": "mcp-yandex-metrica",
+  "displayName": "Yandex Metrica MCP",
+  "version": "1.4.1",
+  "description": "Read Yandex Metrica web analytics from Claude: counters, goals, and traffic and conversion statistics.",
+  "author": {
+    "name": "AskAds",
+    "url": "https://askads.ru"
+  },
+  "homepage": "https://github.com/askads/mcp-yandex-metrica#readme",
+  "repository": "https://github.com/askads/mcp-yandex-metrica",
+  "license": "MIT",
+  "keywords": [
+    "yandex-metrica",
+    "analytics",
+    "web-analytics",
+    "marketing"
+  ],
+  "userConfig": {
+    "token": {
+      "type": "string",
+      "title": "Yandex Metrica OAuth token",
+      "description": "OAuth token for the Yandex Metrica API. Stored in your operating system's credential store, never in settings.json.",
+      "sensitive": true,
+      "required": true
+    },
+    "counter_id": {
+      "type": "string",
+      "title": "Default counter id",
+      "description": "Counter to use when a request does not name one. Leave empty to choose the counter per request."
+    },
+    "telemetry": {
+      "type": "string",
+      "title": "Anonymous telemetry",
+      "description": "Set to 0 to disable the anonymous usage telemetry the server sends by default. Leave as 1 to keep it on.",
+      "default": "1"
+    }
+  },
+  "mcpServers": {
+    "yandex-metrica": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-yandex-metrica@1.4.1"
+      ],
+      "env": {
+        "YANDEX_METRIKA_TOKEN": "${user_config.token}",
+        "YANDEX_METRIKA_COUNTER_ID": "${user_config.counter_id}",
+        "ASKADS_TELEMETRY": "${user_config.telemetry}"
+      }
+    }
+  }
+}
