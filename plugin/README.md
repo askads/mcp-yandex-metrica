@@ -34,6 +34,15 @@ app, Node.js and the operating system. Your access token, your account data, too
 and the names and values of environment variables are **not** sent. Set the
 **Anonymous telemetry** option to `0` to turn it off.
 
+## Privacy
+
+[Privacy policy](https://askads.ru/privacy-policy).
+
+The plugin stores no data of its own. Your credentials go to your operating system's
+credential store. When you sign in from the conversation instead, the server writes the
+token to `~/.config/mcp-yandex-metrica/credentials.json` with owner-only permissions. Data read from
+the API is passed to your AI app and is never written to disk.
+
 ## Skills
 
 `metrica-report` — Pull a traffic or conversion report from Yandex Metrica: pick the counter and goals, request one wide period, and read dimensions and metrics without double-counting.
