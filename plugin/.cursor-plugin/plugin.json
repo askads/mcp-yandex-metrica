@@ -1,0 +1,21 @@
+{
+  "name": "mcp-yandex-metrica",
+  "displayName": "Яндекс Метрика MCP",
+  "description": "MCP-сервер для Yandex Metrica — веб-аналитика (посещаемость, источники, поведение, конверсии по целям) из Claude, Cursor, Codex и других AI-клиентов.",
+  "author": {
+    "name": "Aleksandr Kovalko & Zinnur Temerbekov"
+  },
+  "homepage": "https://github.com/askads/mcp-yandex-metrica#readme",
+  "repository": "https://github.com/askads/mcp-yandex-metrica",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "yandex",
+    "yandex-metrica",
+    "yandex-metrika",
+    "analytics",
+    "web-analytics"
+  ],
+  "logo": "https://raw.githubusercontent.com/askads/mcp-yandex-metrica/HEAD/plugin/.claude-plugin/icon.png"
+}
