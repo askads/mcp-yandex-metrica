@@ -26,6 +26,12 @@ your operating system's credential store rather than to `settings.json`.
 - **Default counter id** — Counter to use when a request does not name one. Leave empty to choose the counter per request.
 - **Anonymous telemetry** — Set to 0 to disable the anonymous usage telemetry the server sends by default. Leave as 1 to keep it on.
 
+Every option has a default, so the server also starts with nothing filled in. Leave the
+token empty and sign in from the conversation with the server's login tools: it opens a
+Yandex OAuth link, you paste the confirmation code back, and the token is saved locally.
+That is how the server authenticates in Cowork, which does not prompt for plugin
+configuration.
+
 ## Telemetry
 
 The underlying server sends anonymous technical events by default: a random installation

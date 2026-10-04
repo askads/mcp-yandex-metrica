@@ -23,12 +23,13 @@
       "title": "Yandex Metrica OAuth token",
       "description": "OAuth token for the Yandex Metrica API. Stored in your operating system's credential store, never in settings.json.",
       "sensitive": true,
-      "required": true
+      "default": ""
     },
     "counter_id": {
       "type": "string",
       "title": "Default counter id",
-      "description": "Counter to use when a request does not name one. Leave empty to choose the counter per request."
+      "description": "Counter to use when a request does not name one. Leave empty to choose the counter per request.",
+      "default": ""
     },
     "telemetry": {
       "type": "string",
