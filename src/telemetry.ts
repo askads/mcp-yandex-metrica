@@ -2,7 +2,7 @@
  * Anonymous usage telemetry — fire-and-forget pings to usage.gistrec.cloud.
  *
  * Privacy contract (mirrored by the receiver): only an anonymous random
- * instance id, event/tool names, a fixed-vocabulary failure reason and
+ * instance id, event/tool names, a fixed-vocabulary failure reason or tool outcome and
  * environment versions ever leave the machine. The API token, account data,
  * tool arguments, prompts and the names or values of environment variables are
  * never read, serialized or sent. Sends are capped at 2 s and swallow every
@@ -73,7 +73,7 @@ export type TelemetryEvent =
   | "startup_failed"
   | "unconfigured_start";
 
-/** `tool` rides with tool_call, `reason` with startup_failed. */
+/** `tool` rides with tool_call; `reason` with tool_call (a TOOL_OUTCOMES constant) and startup_failed. */
 export interface EventFields {
   tool?: string;
   reason?: string;
@@ -138,9 +138,63 @@ export class Telemetry {
 }
 
 /**
- * Count every tool invocation by name. Wraps registerTool once, before the
- * domain modules register their tools, so no per-tool wiring is needed.
- * Only the tool *name* is recorded — arguments never reach telemetry.
+ * How a tool call ended — the only thing about it, besides the tool name, that leaves the
+ * machine. A closed vocabulary: the error text is matched HERE, locally, and only one of
+ * these constants is sent; the receiver drops any `tool_call` reason outside this list.
+ */
+export const TOOL_OUTCOMES = [
+  "ok",
+  "error_auth",
+  "error_permission",
+  "error_not_found",
+  "error_rate_limit",
+  "error_invalid_request",
+  "error_upstream",
+  "error_timeout",
+  "error_network",
+  "error_internal",
+  "error_other",
+] as const;
+export type ToolOutcome = (typeof TOOL_OUTCOMES)[number];
+
+// First match wins, so the order matters: an auth failure often also says "invalid",
+// a rate limit often also says "403". Codes in brackets are Yandex Direct's ("[53] …").
+const OUTCOME_PATTERNS: ReadonlyArray<readonly [ToolOutcome, RegExp]> = [
+  ["error_timeout", /timed?[ _-]?out|таймаут|ETIMEDOUT|AbortError|не был готов|not ready/i],
+  ["error_network", /ECONNRESET|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|EPIPE|fetch failed|socket hang up/i],
+  ["error_rate_limit", /\b429\b|rate[ _-]?limit|too many requests|quota|квот|лимит|\[(?:56|152|506|9000)\]/i],
+  [
+    "error_auth",
+    /\b401\b|unauthori[sz]ed|unauthenticated|invalid[ _-]?(?:token|grant|credentials)|token (?:expired|revoked)|login required|AuthRequired|авториз|не подключ|\[53\]/i,
+  ],
+  ["error_permission", /\b403\b|forbidden|access[ _-]?denied|permission|insufficient[ _-]?scope|нет доступа|\[(?:54|3228)\]/i],
+  ["error_not_found", /\b404\b|not[ _-]?found|не найден|не существует|\[8800\]/i],
+  ["error_upstream", /\b5\d\d\b|\b204\b|unavailable|недоступ|internal server error|bad gateway|\[(?:52|1000|1001|1002)\]/i],
+  ["error_invalid_request", /\b400\b|\b422\b|bad request|invalid|syntax|некоррект|неверн|недопустим|required|обязател|expected|must (?:be|contain|have)|\[(?:4000|4001|4003|5000|8000)\]/i],
+];
+
+function resultText(value: unknown): string {
+  if (value instanceof Error) return `${value.name} ${value.message}`;
+  const content = (value as { content?: unknown } | null)?.content;
+  if (!Array.isArray(content)) return "";
+  return content
+    .map((part) => (part && typeof part === "object" && typeof part.text === "string" ? part.text : ""))
+    .join("\n");
+}
+
+/** Classifies a finished call. Reads the result/error text, returns only a TOOL_OUTCOMES constant. */
+export function toolOutcome(result: unknown, thrown?: unknown): ToolOutcome {
+  if (thrown === undefined && !(result as { isError?: unknown } | null)?.isError) return "ok";
+  const text = resultText(thrown ?? result);
+  for (const [outcome, pattern] of OUTCOME_PATTERNS) if (pattern.test(text)) return outcome;
+  return thrown === undefined ? "error_other" : "error_internal";
+}
+
+/**
+ * Count every tool invocation by name and how it ended. Wraps registerTool once, before the
+ * domain modules register their tools, so no per-tool wiring is needed. Only the tool *name*
+ * and a TOOL_OUTCOMES constant are recorded — arguments and result text never reach telemetry.
+ * The ping goes out when the call finishes; telemetry failures never touch the result.
  */
 export function instrumentToolCalls(server: McpServer, telemetry: Telemetry): void {
   const original = server.registerTool.bind(server);
@@ -150,9 +204,15 @@ export function instrumentToolCalls(server: McpServer, telemetry: Telemetry): vo
     original(
       name,
       config as never,
-      ((...args: unknown[]) => {
-        telemetry.send("tool_call", { tool: name });
-        return (callback as (...a: unknown[]) => unknown)(...args);
+      (async (...args: unknown[]) => {
+        try {
+          const result = await (callback as (...a: unknown[]) => unknown)(...args);
+          telemetry.send("tool_call", { tool: name, reason: toolOutcome(result) });
+          return result;
+        } catch (e) {
+          telemetry.send("tool_call", { tool: name, reason: toolOutcome(undefined, e) });
+          throw e;
+        }
       }) as never,
     )) as typeof server.registerTool;
 }

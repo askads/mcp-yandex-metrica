@@ -9,7 +9,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 
-import { instrumentToolCalls, Telemetry, telemetryEnabled } from "./telemetry.js";
+import { instrumentToolCalls, Telemetry, telemetryEnabled, TOOL_OUTCOMES, toolOutcome } from "./telemetry.js";
 
 interface Sent {
   url: string;
@@ -146,4 +146,85 @@ test("a failing telemetry endpoint never breaks the tool call", async () => {
   const res = await mcp.callTool({ name: "echo", arguments: { secret: "ok" } });
   assert.equal((res as { isError?: boolean }).isError, undefined);
   assert.ok(sent.length >= 1, "telemetry was attempted");
+});
+
+// --- tool outcome ------------------------------------------------------------
+
+const errorResult = (text: string) => ({ isError: true, content: [{ type: "text" as const, text }] });
+
+test("toolOutcome: success is ok, isError is classified from the text", () => {
+  assert.equal(toolOutcome({ content: [{ type: "text", text: "invalid but fine" }] }), "ok");
+  const cases: [string, string][] = [
+    ["Ошибка: [53] Ошибка авторизации: Недействительный OAuth-токен", "error_auth"],
+    ["HTTP 401 Unauthorized", "error_auth"],
+    ["Ошибка: [3228] Нет доступа к методу", "error_permission"],
+    ["HTTP 403 access_denied: Access Denied", "error_permission"],
+    ["HTTP 404 Not Found", "error_not_found"],
+    ["Ошибка: [56] Превышен лимит запросов метода", "error_rate_limit"],
+    ["HTTP 429 Too Many Requests", "error_rate_limit"],
+    ["Ошибка: [8000] Некорректный запрос: Элемент массива FieldNames", "error_invalid_request"],
+    ["HTTP 400 invalid_parameter: Incorrectly specified metric", "error_invalid_request"],
+    ["HTTP 503 Service Unavailable", "error_upstream"],
+    ["Запрос превысил таймаут 30 с", "error_timeout"],
+    ["TypeError: fetch failed (ECONNRESET)", "error_network"],
+    ["что-то пошло не так", "error_other"],
+  ];
+  for (const [text, expected] of cases) assert.equal(toolOutcome(errorResult(text)), expected, text);
+});
+
+test("toolOutcome: a thrown error is classified, unknown ones are error_internal", () => {
+  assert.equal(toolOutcome(undefined, new Error("HTTP 401")), "error_auth");
+  assert.equal(toolOutcome(undefined, new TypeError("x is undefined")), "error_internal");
+  assert.equal(toolOutcome(undefined, "not even an Error"), "error_internal");
+});
+
+test("toolOutcome only ever returns a TOOL_OUTCOMES constant", () => {
+  const junk = ["", "a".repeat(10_000), "user@example.com 79991234567", "[53]", "\u0000", "HTTP 418"];
+  for (const text of junk) {
+    assert.ok((TOOL_OUTCOMES as readonly string[]).includes(toolOutcome(errorResult(text))), text);
+    assert.ok((TOOL_OUTCOMES as readonly string[]).includes(toolOutcome(undefined, new Error(text))), text);
+  }
+  assert.equal(toolOutcome({ isError: true }), "error_other");
+  assert.equal(toolOutcome({ isError: true, content: "not an array" }), "error_other");
+});
+
+test("tool_call carries the outcome and never the error text", async () => {
+  const sent: Sent[] = [];
+  const telemetry = new Telemetry("1.0.0", true, recordingFetch(sent));
+  const server = new McpServer({ name: "test-server", version: "0.0.0" });
+  instrumentToolCalls(server, telemetry);
+  server.registerTool("leaky", { description: "leaky", inputSchema: { secret: z.string() } }, async ({ secret }) =>
+    errorResult(`HTTP 403 нет доступа к кабинету ${secret} (user@example.com)`),
+  );
+  server.registerTool("boom", { description: "boom", inputSchema: {} }, async () => {
+    throw new Error("HTTP 401 token for user@example.com expired");
+  });
+  const mcp = new Client({ name: "test-client", version: "9.9.9" });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  await server.connect(serverTransport);
+  await mcp.connect(clientTransport);
+
+  const res = await mcp.callTool({ name: "leaky", arguments: { secret: "hunter2" } });
+  assert.equal((res as { isError?: boolean }).isError, true, "the result itself is untouched");
+  await mcp.callTool({ name: "boom", arguments: {} });
+
+  const calls = sent.filter((s) => s.body.event === "tool_call");
+  assert.deepEqual(
+    calls.map((c) => [c.body.tool, c.body.reason]),
+    [
+      ["leaky", "error_permission"],
+      ["boom", "error_auth"],
+    ],
+  );
+  const wire = JSON.stringify(calls.map((c) => c.body));
+  for (const leak of ["hunter2", "user@example.com", "кабинет", "expired"]) {
+    assert.ok(!wire.includes(leak), `${leak} must never reach telemetry`);
+  }
+});
+
+test("a successful call reports ok", async () => {
+  const sent: Sent[] = [];
+  const mcp = await connectedPair(new Telemetry("1.0.0", true, recordingFetch(sent)));
+  await mcp.callTool({ name: "echo", arguments: { secret: "x" } });
+  assert.equal(sent.find((s) => s.body.event === "tool_call")?.body.reason, "ok");
 });
