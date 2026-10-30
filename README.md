@@ -35,6 +35,22 @@
 >
 > **Ассистент:** Находит цель, строит отчёт по источникам и показывает визиты, достижения цели и конверсию. Если Метрика применила выборку, отмечает, что цифры приблизительные.
 
+## Видео: подключение за минуту
+
+Клик по превью открывает видео со звуком. Данные в роликах демонстрационные.
+
+| Claude Code | Codex |
+|---|---|
+| [![Подключение в Claude Code](https://share.gistrec.cloud/askads-mcp/terminal-metrica-claude.gif)](https://share.gistrec.cloud/askads-mcp/terminal-metrica-claude.mp4) | [![Подключение в Codex](https://share.gistrec.cloud/askads-mcp/terminal-metrica-codex.gif)](https://share.gistrec.cloud/askads-mcp/terminal-metrica-codex.mp4) |
+
+По URL в браузере — коннектор AskAds (Директ, Метрика и Вебмастер вместе, только чтение):
+
+| ChatGPT | Claude |
+|---|---|
+| [![Подключение в ChatGPT](https://share.gistrec.cloud/askads-mcp/chatgpt.gif)](https://share.gistrec.cloud/askads-mcp/chatgpt.mp4) | [![Подключение в Claude](https://share.gistrec.cloud/askads-mcp/claude.gif)](https://share.gistrec.cloud/askads-mcp/claude.mp4) |
+
+Все видео на одной странице: [share.gistrec.cloud/askads-mcp](https://share.gistrec.cloud/askads-mcp/index.html).
+
 ## Содержание
 
 - [Быстрый старт](#быстрый-старт)
