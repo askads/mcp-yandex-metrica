@@ -43,6 +43,10 @@ More detail in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Tool list: [docs/TOOL
   `startup_failed` is the exception: `sendBlocking` awaits it, because the caller
   exits right after and a fire-and-forget ping would die in flight. Its `reason`
   is a closed vocabulary (`missing_token`, …) — never a variable's name or value.
+  `tool_call` is sent when the call finishes, with `reason` = one `TOOL_OUTCOMES` constant
+  classified locally from the result (`toolOutcome`); `wireReason` in `post()` drops anything
+  else. The error text itself never leaves the process — keep it that way, and keep README's
+  «Данные и телеметрия» in sync with what is sent.
 - `src/config.ts` — env → config; throws `ConfigError` (with a `reason` code) instead
   of exiting, so `index.ts` can report the drop-off before dying.
 

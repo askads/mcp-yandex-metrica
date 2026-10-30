@@ -120,7 +120,7 @@ export class Telemetry {
       client_name: this.clientInfo?.name,
       client_version: this.clientInfo?.version,
       tool: fields.tool,
-      reason: fields.reason,
+      reason: wireReason(event, fields.reason),
       node_version: process.version,
       os: process.platform,
     });
@@ -156,6 +156,15 @@ export const TOOL_OUTCOMES = [
   "error_other",
 ] as const;
 export type ToolOutcome = (typeof TOOL_OUTCOMES)[number];
+
+/**
+ * The last check before the wire, independent of the callers: a tool_call ships its reason
+ * only if it is one of TOOL_OUTCOMES; anything else is dropped here.
+ */
+function wireReason(event: TelemetryEvent, reason: string | undefined): string | undefined {
+  if (event !== "tool_call" || reason === undefined) return reason;
+  return (TOOL_OUTCOMES as readonly string[]).includes(reason) ? reason : undefined;
+}
 
 // First match wins, so the order matters: an auth failure often also says "invalid",
 // a rate limit often also says "403". Codes in brackets are Yandex Direct's ("[53] …").

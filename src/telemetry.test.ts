@@ -228,3 +228,14 @@ test("a successful call reports ok", async () => {
   await mcp.callTool({ name: "echo", arguments: { secret: "x" } });
   assert.equal(sent.find((s) => s.body.event === "tool_call")?.body.reason, "ok");
 });
+
+test("a tool_call reason outside TOOL_OUTCOMES never leaves the machine", () => {
+  const sent: Sent[] = [];
+  const t = new Telemetry("1.0.0", true, recordingFetch(sent));
+  t.send("tool_call", { tool: "x", reason: "error_user_ivanov" as never });
+  t.send("tool_call", { tool: "x", reason: "error_auth" });
+  assert.deepEqual(
+    sent.map((s) => s.body.reason),
+    [undefined, "error_auth"],
+  );
+});
