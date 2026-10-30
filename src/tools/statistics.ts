@@ -35,8 +35,11 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
           .describe("Идентификатор счётчика. По умолчанию YANDEX_METRIKA_COUNTER_ID."),
         metrics: z
           .array(z.string())
+          .max(20)
           .optional()
-          .describe("Метрики, например ym:s:visits, ym:s:users, ym:s:bounceRate, ym:s:goal<id>reaches. По умолчанию — типовой набор."),
+          .describe(
+            "Метрики (не больше 20 — лимит API), например ym:s:visits, ym:s:users, ym:s:bounceRate, ym:s:goal<id>reaches. По умолчанию — типовой набор.",
+          ),
         dimensions: z
           .array(z.string())
           .optional()
@@ -51,6 +54,12 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
           .string()
           .optional()
           .describe("Выражение фильтра Метрики, например ym:s:deviceCategory=='mobile'."),
+        directClientLogins: z
+          .array(z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._@-]{0,99}$/))
+          .optional()
+          .describe(
+            "Логины клиентов Яндекс Директа — нужны метрикам расходов Директа (ym:ad:*), без них API отвечает 403 direct_client_logins.",
+          ),
         sort: z
           .string()
           .optional()
@@ -88,8 +97,30 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
           .describe("Лимит страниц для autoPaginate. По умолчанию 100."),
       },
     },
-    async ({ counterId, metrics, dimensions, date1, date2, filters, sort, accuracy, limit, offset, autoPaginate, maxPages }) => {
+    async ({
+      counterId,
+      metrics,
+      dimensions,
+      date1,
+      date2,
+      filters,
+      directClientLogins,
+      sort,
+      accuracy,
+      limit,
+      offset,
+      autoPaginate,
+      maxPages,
+    }) => {
       try {
+        // "goal#" is the docs' placeholder, not a field: the API answers a bare
+        // "Incorrectly specified metric" that does not say what to put instead.
+        const placeholder = metrics?.find((m) => m.includes("goal#"));
+        if (placeholder) {
+          return fail(
+            `${placeholder}: вместо # нужен идентификатор цели, например ym:s:goal12345reaches. Идентификаторы целей даёт list_goals.`,
+          );
+        }
         const counter = resolveCounter(counterId, client);
         if (counter === undefined) {
           return fail(
@@ -103,6 +134,7 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
           date1: date1 ?? "7daysAgo",
           date2: date2 ?? "yesterday",
           filters,
+          direct_client_logins: csv(directClientLogins),
           sort,
           accuracy,
           limit,

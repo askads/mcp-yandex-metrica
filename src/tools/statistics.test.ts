@@ -92,3 +92,27 @@ test("get_statistics limit is capped at MAX_TOOL_LIMIT (10000), not the 100k API
   assert.equal(limit.safeParse(10_001).success, false);
   assert.equal(limit.safeParse(50_000).success, false);
 });
+
+test("get_statistics metrics are capped at 20 (API limit)", () => {
+  const { schemas } = harness();
+  const metrics = z.object(schemas.get_statistics).shape.metrics;
+  const many = (n: number) => Array.from({ length: n }, (_, i) => `ym:s:goal${i}reaches`);
+  assert.equal(metrics.safeParse(many(20)).success, true);
+  assert.equal(metrics.safeParse(many(21)).success, false);
+});
+
+test("get_statistics refuses the goal# placeholder before the request", async () => {
+  const { calls, tools } = harness({ defaultCounterId: 7 });
+  const res = await tools.get_statistics({ metrics: ["ym:s:visits", "ym:s:goal#reaches"] });
+  assert.equal(res.isError, true);
+  assert.match(res.content[0].text, /list_goals/);
+  assert.equal(calls.length, 0);
+});
+
+test("get_statistics passes directClientLogins as direct_client_logins", async () => {
+  const { calls, tools } = harness({ defaultCounterId: 7 });
+  await tools.get_statistics({ metrics: ["ym:ad:clicks"], dimensions: ["ym:ad:date"], directClientLogins: ["a", "b-c"] });
+  assert.equal(calls[0].query.direct_client_logins, "a,b-c");
+  await tools.get_statistics({});
+  assert.equal("direct_client_logins" in calls[1].query, false, "absent when not given");
+});

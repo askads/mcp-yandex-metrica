@@ -17,11 +17,12 @@
 ## Что нужно передать
 
 - `counterId` — **необязательно**. Идентификатор счётчика. По умолчанию YANDEX_METRIKA_COUNTER_ID.
-- `metrics` — **необязательно**. Метрики, например ym:s:visits, ym:s:users, ym:s:bounceRate, ym:s:goal<id>reaches. По умолчанию — типовой набор.
+- `metrics` — **необязательно**. Метрики (не больше 20 — лимит API), например ym:s:visits, ym:s:users, ym:s:bounceRate, ym:s:goal<id>reaches. По умолчанию — типовой набор.
 - `dimensions` — **необязательно**. Измерения для группировки, например ym:s:date, ym:s:lastTrafficSource, ym:s:deviceCategory. Без них — итог за период.
 - `date1` — **необязательно**. Дата начала: YYYY-MM-DD или относительная (today, yesterday, NdaysAgo). По умолчанию 7daysAgo.
 - `date2` — **необязательно**. Дата конца: YYYY-MM-DD или относительная (today, yesterday, NdaysAgo). По умолчанию yesterday.
 - `filters` — **необязательно**. Выражение фильтра Метрики, например ym:s:deviceCategory=='mobile'.
+- `directClientLogins` — **необязательно**. Логины клиентов Яндекс Директа — нужны метрикам расходов Директа (ym:ad:*), без них API отвечает 403 direct_client_logins.
 - `sort` — **необязательно**. Поле сортировки; префикс '-' — по убыванию, например -ym:s:visits.
 - `accuracy` — **необязательно**. Точность сэмплирования: 'full' — точный расчёт (медленнее) или доля 0..1. По умолчанию — авторежим API.
 - `limit` — **необязательно**. Максимум строк на странице (игнорируется, если задан autoPaginate).
