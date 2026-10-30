@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { YandexMetrikaClient } from "../client.js";
-import { compact, csv, fail, metrikaDate, ok, READ_ONLY, resolveCounter } from "./util.js";
+import { compact, counterIdField, counterIdNote, csv, fail, metrikaDate, ok, READ_ONLY, resolveCounter } from "./util.js";
 
 /**
  * Max rows a single-page tool call may request. Kept well below the Stat API's
@@ -26,13 +26,9 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
       title: "Статистика",
       annotations: READ_ONLY,
       description:
-        "Запрашивает Reporting API Яндекс Метрики (stat/v1/data) по счётчику. ПО УМОЛЧАНИЮ возвращает одну строку, агрегированную за период (без измерений), с visits/users/pageviews/bounceRate/avgVisitDurationSeconds. `dimensions` разбивает результат на строки (ym:s:date — динамика по дням, ym:s:lastTrafficSource — источники трафика, ym:s:deviceCategory — устройства), `metrics` задаёт нужные метрики — для конверсий это ym:s:goal<goalId>reaches / ym:s:goal<goalId>conversionRate (идентификаторы целей даёт list_goals). В ответе есть `totals` (итог по ВСЕМ строкам — для вопросов «сколько всего» суммировать не нужно), `total_rows` и `sampled`/`sample_share` (sampled=true означает, что данные приблизительные; для точных цифр нужно сузить период или передать accuracy=full). Если counterId не передан, берётся YANDEX_METRIKA_COUNTER_ID.",
+        "Запрашивает Reporting API Яндекс Метрики (stat/v1/data) по счётчику. ПО УМОЛЧАНИЮ возвращает одну строку, агрегированную за период (без измерений), с visits/users/pageviews/bounceRate/avgVisitDurationSeconds. `dimensions` разбивает результат на строки (ym:s:date — динамика по дням, ym:s:lastTrafficSource — источники трафика, ym:s:deviceCategory — устройства), `metrics` задаёт нужные метрики — для конверсий это ym:s:goal<goalId>reaches / ym:s:goal<goalId>conversionRate (идентификаторы целей даёт list_goals). В ответе есть `totals` (итог по ВСЕМ строкам — для вопросов «сколько всего» суммировать не нужно), `total_rows` и `sampled`/`sample_share` (sampled=true означает, что данные приблизительные; для точных цифр нужно сузить период или передать accuracy=full)." + counterIdNote(client),
       inputSchema: {
-        counterId: z
-          .number()
-          .int()
-          .optional()
-          .describe("Идентификатор счётчика. По умолчанию YANDEX_METRIKA_COUNTER_ID."),
+        counterId: counterIdField(client),
         metrics: z
           .array(z.string())
           .max(20)

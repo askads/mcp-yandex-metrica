@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { YandexMetrikaClient } from "../client.js";
-import { compact, fail, ok, READ_ONLY, resolveCounter } from "./util.js";
+import { compact, counterIdField, counterIdNote, fail, ok, READ_ONLY, resolveCounter } from "./util.js";
 
 export function registerCounterTools(server: McpServer, client: YandexMetrikaClient): void {
   server.registerTool(
@@ -50,13 +50,9 @@ export function registerCounterTools(server: McpServer, client: YandexMetrikaCli
       title: "Список целей счётчика",
       annotations: READ_ONLY,
       description:
-        "Возвращает цели (конверсии), настроенные на счётчике Метрики (Management API). Идентификаторы целей нужны, чтобы запросить метрики конверсий (ym:s:goal<id>reaches / ym:s:goal<id>conversionRate) в get_statistics. Если counterId не передан, берётся YANDEX_METRIKA_COUNTER_ID.",
+        "Возвращает цели (конверсии), настроенные на счётчике Метрики (Management API). Идентификаторы целей нужны, чтобы запросить метрики конверсий (ym:s:goal<id>reaches / ym:s:goal<id>conversionRate) в get_statistics." + counterIdNote(client),
       inputSchema: {
-        counterId: z
-          .number()
-          .int()
-          .optional()
-          .describe("Идентификатор счётчика. По умолчанию YANDEX_METRIKA_COUNTER_ID."),
+        counterId: counterIdField(client),
       },
     },
     async ({ counterId }) => {

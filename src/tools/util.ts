@@ -11,6 +11,23 @@ export function resolveCounter(
 }
 
 /**
+ * The `counterId` field, shaped by the config: with YANDEX_METRIKA_COUNTER_ID set it is optional
+ * and falls back to it; without it the schema says required. An optional field with no default
+ * behind it read to the consuming model as "may be omitted", and every such call failed.
+ * A factory for the same `$ref` reason as metrikaDate.
+ */
+export const counterIdField = (client: YandexMetrikaClient) =>
+  client.defaultCounterId === undefined
+    ? z.number().int().describe("Идентификатор счётчика из list_counters.")
+    : z.number().int().optional().describe("Идентификатор счётчика. По умолчанию YANDEX_METRIKA_COUNTER_ID.");
+
+/** The description's last sentence about counterId, matching counterIdField. */
+export const counterIdNote = (client: YandexMetrikaClient): string =>
+  client.defaultCounterId === undefined
+    ? " counterId обязателен: id счётчика даёт list_counters."
+    : " Если counterId не передан, берётся YANDEX_METRIKA_COUNTER_ID.";
+
+/**
  * A Metrica date: an ISO day (YYYY-MM-DD) or a relative token the Stat API
  * accepts (today, yesterday, NdaysAgo).
  *

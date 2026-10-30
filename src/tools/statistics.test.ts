@@ -116,3 +116,11 @@ test("get_statistics passes directClientLogins as direct_client_logins", async (
   await tools.get_statistics({});
   assert.equal("direct_client_logins" in calls[1].query, false, "absent when not given");
 });
+
+test("counterId is required in the schema only when no YANDEX_METRIKA_COUNTER_ID default exists", () => {
+  const without = z.object(harness().schemas.get_statistics).shape.counterId;
+  assert.equal(without.safeParse(undefined).success, false, "no default → required");
+  assert.equal(without.safeParse(42).success, true);
+  const withDefault = z.object(harness({ defaultCounterId: 7 }).schemas.get_statistics).shape.counterId;
+  assert.equal(withDefault.safeParse(undefined).success, true, "default → optional");
+});
