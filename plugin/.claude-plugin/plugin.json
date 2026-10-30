@@ -1,7 +1,7 @@
 {
   "name": "mcp-yandex-metrica",
   "displayName": "Yandex Metrica MCP",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Read Yandex Metrica web analytics from Claude: counters, goals, and traffic and conversion statistics.",
   "author": {
     "name": "gistrec",
@@ -34,7 +34,7 @@
     "telemetry": {
       "type": "string",
       "title": "Anonymous telemetry",
-      "description": "Set to 0 to disable the anonymous usage telemetry the server sends by default. Leave as 1 to keep it on.",
+      "description": "Set to 0 to disable the anonymous usage telemetry the server sends by default (installation id, versions, tool names, call outcomes and a masked excerpt of error texts — never tokens or account data). Leave as 1 to keep it on.",
       "default": "1"
     }
   },
@@ -43,7 +43,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "mcp-yandex-metrica@1.5.0"
+        "mcp-yandex-metrica@1.5.1"
       ],
       "env": {
         "YANDEX_METRIKA_TOKEN": "${user_config.token}",

@@ -99,6 +99,7 @@ test("get_statistics metrics are capped at 20 (API limit)", () => {
   const many = (n: number) => Array.from({ length: n }, (_, i) => `ym:s:goal${i}reaches`);
   assert.equal(metrics.safeParse(many(20)).success, true);
   assert.equal(metrics.safeParse(many(21)).success, false);
+  assert.equal(metrics.safeParse([]).success, false, "an empty list is refused, not swapped for the defaults");
 });
 
 test("get_statistics refuses the goal# placeholder before the request", async () => {
