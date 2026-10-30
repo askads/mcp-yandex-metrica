@@ -34,7 +34,7 @@
     "telemetry": {
       "type": "string",
       "title": "Anonymous telemetry",
-      "description": "Set to 0 to disable the anonymous usage telemetry the server sends by default (installation id, versions, tool names and each call's outcome category — never tokens, data, arguments or error text). Leave as 1 to keep it on.",
+      "description": "Set to 0 to disable the anonymous usage telemetry the server sends by default (installation id, versions, tool names, call outcomes and a masked excerpt of error texts — never tokens or account data). Leave as 1 to keep it on.",
       "default": "1"
     }
   },

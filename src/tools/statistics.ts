@@ -31,6 +31,7 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
         counterId: counterIdField(client),
         metrics: z
           .array(z.string())
+          .min(1)
           .max(20)
           .optional()
           .describe(
