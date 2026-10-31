@@ -40,6 +40,10 @@
 - **Конверсии:** `metrics: ["ym:s:goal<goalId>reaches", "ym:s:goal<goalId>conversionRate"]`
   (id целей отдаёт `list_goals`).
 - **Динамика по дням:** `dimensions: ["ym:s:date"]`. **Источники трафика:** `ym:s:lastTrafficSource`.
+- **Частые поля:** недели/месяцы `ym:s:startOfWeek`/`ym:s:startOfMonth`, страница входа/выхода
+  `ym:s:startURL`/`ym:s:endURL`, кампания Директа `ym:s:lastsignDirectClickOrder`. Просмотренные
+  страницы `ym:pv:URL`/`ym:pv:title` идут только с метриками `ym:pv:*`; `ym:s:*` и `ym:pv:*` в одном
+  запросе сочетаются лишь через `filters`.
 - В ответе приходят `totals` (итог по всем строкам), `total_rows` и `sampled`/`sample_share`:
   `sampled: true` означает, что цифры приблизительные — для точных нужен более узкий период
   или `accuracy: "full"`.

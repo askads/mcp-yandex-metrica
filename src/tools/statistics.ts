@@ -26,7 +26,7 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
       title: "Статистика",
       annotations: READ_ONLY,
       description:
-        "Запрашивает Reporting API Яндекс Метрики (stat/v1/data) по счётчику. ПО УМОЛЧАНИЮ возвращает одну строку, агрегированную за период (без измерений), с visits/users/pageviews/bounceRate/avgVisitDurationSeconds. `dimensions` разбивает результат на строки (ym:s:date — динамика по дням, ym:s:lastTrafficSource — источники трафика, ym:s:deviceCategory — устройства), `metrics` задаёт нужные метрики — для конверсий это ym:s:goal<goalId>reaches / ym:s:goal<goalId>conversionRate (идентификаторы целей даёт list_goals). В ответе есть `totals` (итог по ВСЕМ строкам — для вопросов «сколько всего» суммировать не нужно), `total_rows` и `sampled`/`sample_share` (sampled=true означает, что данные приблизительные; для точных цифр нужно сузить период или передать accuracy=full)." + counterIdNote(client),
+        "Запрашивает Reporting API Яндекс Метрики (stat/v1/data) по счётчику. ПО УМОЛЧАНИЮ возвращает одну строку, агрегированную за период (без измерений), с visits/users/pageviews/bounceRate/avgVisitDurationSeconds. `dimensions` разбивает результат на строки (ym:s:date — динамика по дням, ym:s:lastTrafficSource — источники трафика, ym:s:deviceCategory — устройства), `metrics` задаёт нужные метрики — для конверсий это ym:s:goal<goalId>reaches / ym:s:goal<goalId>conversionRate (идентификаторы целей даёт list_goals). Префиксы не смешиваются: ym:s:* (визиты) и ym:pv:* (просмотры страниц) в одном запросе сочетаются только через filters. Ответ 400 «Incorrectly specified attribute» значит, что такого поля нет: не перебирать варианты имени, а взять поле из списка в `dimensions`. В ответе есть `totals` (итог по ВСЕМ строкам — для вопросов «сколько всего» суммировать не нужно), `total_rows` и `sampled`/`sample_share` (sampled=true означает, что данные приблизительные; для точных цифр нужно сузить период или передать accuracy=full)." + counterIdNote(client),
       inputSchema: {
         counterId: counterIdField(client),
         metrics: z
@@ -40,7 +40,12 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
         dimensions: z
           .array(z.string())
           .optional()
-          .describe("Измерения для группировки, например ym:s:date, ym:s:lastTrafficSource, ym:s:deviceCategory. Без них — итог за период."),
+          .describe(
+            "Измерения для группировки; без них — итог за период. Частые: ym:s:date (по дням), ym:s:startOfWeek / ym:s:startOfMonth (по неделям / месяцам), " +
+              "ym:s:startURL / ym:s:endURL (страница входа / выхода; ym:s:startURLPath / ym:s:endURLPath — без домена), ym:s:referer, " +
+              "ym:s:lastTrafficSource, ym:s:lastsignSourceEngine (конкретный источник), ym:s:lastsignDirectClickOrder (кампания Директа), ym:s:lastsignUTMCampaign, ym:s:deviceCategory. " +
+              "Полей ym:s:URL, ym:s:page, ym:s:pageTitle, ym:s:week нет. Все просмотренные страницы: ym:pv:URL, ym:pv:URLPath, ym:pv:title, только с метриками ym:pv:* (ym:pv:pageviews, ym:pv:users).",
+          ),
         date1: metrikaDate()
           .optional()
           .describe("Дата начала: YYYY-MM-DD или относительная (today, yesterday, NdaysAgo). По умолчанию 7daysAgo."),

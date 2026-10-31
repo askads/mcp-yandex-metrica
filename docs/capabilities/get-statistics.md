@@ -18,7 +18,7 @@
 
 - `counterId` — **необязательно**. Идентификатор счётчика. По умолчанию YANDEX_METRIKA_COUNTER_ID.
 - `metrics` — **необязательно**. Метрики (не больше 20 — лимит API), например ym:s:visits, ym:s:users, ym:s:bounceRate, ym:s:goal<id>reaches. По умолчанию — типовой набор.
-- `dimensions` — **необязательно**. Измерения для группировки, например ym:s:date, ym:s:lastTrafficSource, ym:s:deviceCategory. Без них — итог за период.
+- `dimensions` — **необязательно**. Измерения для группировки; без них — итог за период. Частые: ym:s:date (по дням), ym:s:startOfWeek / ym:s:startOfMonth (по неделям / месяцам), ym:s:startURL / ym:s:endURL (страница входа / выхода; ym:s:startURLPath / ym:s:endURLPath — без домена), ym:s:referer, ym:s:lastTrafficSource, ym:s:lastsignSourceEngine (конкретный источник), ym:s:lastsignDirectClickOrder (кампания Директа), ym:s:lastsignUTMCampaign, ym:s:deviceCategory. Полей ym:s:URL, ym:s:page, ym:s:pageTitle, ym:s:week нет. Все просмотренные страницы: ym:pv:URL, ym:pv:URLPath, ym:pv:title, только с метриками ym:pv:* (ym:pv:pageviews, ym:pv:users).
 - `date1` — **необязательно**. Дата начала: YYYY-MM-DD или относительная (today, yesterday, NdaysAgo). По умолчанию 7daysAgo.
 - `date2` — **необязательно**. Дата конца: YYYY-MM-DD или относительная (today, yesterday, NdaysAgo). По умолчанию yesterday.
 - `filters` — **необязательно**. Выражение фильтра Метрики, например ym:s:deviceCategory=='mobile'.
@@ -44,7 +44,7 @@
 
 ## Возможные ошибки и ограничения
 
-ПО УМОЛЧАНИЮ возвращает одну строку, агрегированную за период (без измерений), с visits/users/pageviews/bounceRate/avgVisitDurationSeconds. `dimensions` разбивает результат на строки (ym:s:date — динамика по дням, ym:s:lastTrafficSource — источники трафика, ym:s:deviceCategory — устройства), `metrics` задаёт нужные метрики — для конверсий это ym:s:goal<goalId>reaches / ym:s:goal<goalId>conversionRate (идентификаторы целей даёт list_goals). Если counterId не передан, берётся YANDEX_METRIKA_COUNTER_ID.
+ПО УМОЛЧАНИЮ возвращает одну строку, агрегированную за период (без измерений), с visits/users/pageviews/bounceRate/avgVisitDurationSeconds. `dimensions` разбивает результат на строки (ym:s:date — динамика по дням, ym:s:lastTrafficSource — источники трафика, ym:s:deviceCategory — устройства), `metrics` задаёт нужные метрики — для конверсий это ym:s:goal<goalId>reaches / ym:s:goal<goalId>conversionRate (идентификаторы целей даёт list_goals). Префиксы не смешиваются: ym:s:* (визиты) и ym:pv:* (просмотры страниц) в одном запросе сочетаются только через filters. Ответ 400 «Incorrectly specified attribute» значит, что такого поля нет: не перебирать варианты имени, а взять поле из списка в `dimensions`. Если counterId не передан, берётся YANDEX_METRIKA_COUNTER_ID.
 
 Доступ также зависит от прав токена, квот и ограничений исходного API.
 
