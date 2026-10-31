@@ -5,6 +5,16 @@
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/),
 проект придерживается [семантического версионирования](https://semver.org/lang/ru/).
 
+## [1.5.2] — 2026-10-31
+
+### Исправлено
+
+- Телеметрия: исход ошибки определяется сначала по коду API в начале сообщения, а текстовые
+  шаблоны применяются, только если кода нет. Ошибка 8000 со списком полей, где есть
+  `ForbiddenPlatform`, считалась отказом в доступе.
+- Телеметрия: сетевой сбой `fetch failed` считается ошибкой сети или таймаутом, а не багом
+  сервера.
+
 ## [1.5.1] — 2026-10-30
 
 ### Изменено
@@ -230,7 +240,8 @@
 - OAuth-токен (scope `metrika:read`), ретраи на 429/5xx с бэкоффом, таймаут запроса,
   `counterId` с дефолтом из `YANDEX_METRIKA_COUNTER_ID`.
 
-[Unreleased]: https://github.com/askads/mcp-yandex-metrica/compare/v1.5.1...HEAD
+[Unreleased]: https://github.com/askads/mcp-yandex-metrica/compare/v1.5.2...HEAD
+[1.5.2]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.2
 [1.5.1]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.1
 [1.5.0]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.0
 [1.4.1]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.4.1
