@@ -5,6 +5,15 @@
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/),
 проект придерживается [семантического версионирования](https://semver.org/lang/ru/).
 
+## [1.5.4] — 2026-10-31
+
+### Исправлено
+
+- Телеметрия: если выжимка текста ошибки ничего не нашла, собственные классы ошибок сервера
+  (`AuthRequiredError`, `AbortError` …) передают имя класса, без сообщения; обычный `Error` и
+  системные ошибки не передают ничего. Ошибки Node с `code`, `errno` или `syscall` передают только тип
+  и код. Раньше такие отказы приходили без текста.
+
 ## [1.5.3] — 2026-10-31
 
 ### Изменено
@@ -249,6 +258,7 @@
   `counterId` с дефолтом из `YANDEX_METRIKA_COUNTER_ID`.
 
 [Unreleased]: https://github.com/askads/mcp-yandex-metrica/compare/v1.5.3...HEAD
+[1.5.4]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.4
 [1.5.3]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.3
 [1.5.2]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.2
 [1.5.1]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.1
