@@ -5,6 +5,14 @@
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/),
 проект придерживается [семантического версионирования](https://semver.org/lang/ru/).
 
+## [1.5.3] — 2026-10-31
+
+### Изменено
+
+- `get_statistics`: описание называет правильные поля для частых задач (страница входа и выхода,
+  просмотренные страницы, источник, кампания Директа, группировка по неделям и месяцам) и
+  перечисляет несуществующие, на которых модели ошибались. Каждое поле проверено на живом счётчике.
+
 ## [1.5.2] — 2026-10-31
 
 ### Исправлено
@@ -240,7 +248,8 @@
 - OAuth-токен (scope `metrika:read`), ретраи на 429/5xx с бэкоффом, таймаут запроса,
   `counterId` с дефолтом из `YANDEX_METRIKA_COUNTER_ID`.
 
-[Unreleased]: https://github.com/askads/mcp-yandex-metrica/compare/v1.5.2...HEAD
+[Unreleased]: https://github.com/askads/mcp-yandex-metrica/compare/v1.5.3...HEAD
+[1.5.3]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.3
 [1.5.2]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.2
 [1.5.1]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.1
 [1.5.0]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.0
