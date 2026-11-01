@@ -7,6 +7,14 @@
 
 ## [Unreleased]
 
+## [1.5.5] — 2026-11-01
+
+### Изменено
+
+- Описания: `list_counters` предупреждает, что на один сайт бывает несколько счётчиков (старый и
+  новый, тестовый, для поддомена) и у каждого свои данные; `get_statistics` — что `users`
+  уникальны за весь период и сумма `users` по дням их не даёт.
+
 ### Удалено
 
 - `plugin/` — Claude- и Cursor-плагин со скиллом `metrica-report`. Плагины живут отдельно от
@@ -265,7 +273,8 @@
 - OAuth-токен (scope `metrika:read`), ретраи на 429/5xx с бэкоффом, таймаут запроса,
   `counterId` с дефолтом из `YANDEX_METRIKA_COUNTER_ID`.
 
-[Unreleased]: https://github.com/askads/mcp-yandex-metrica/compare/v1.5.4...HEAD
+[Unreleased]: https://github.com/askads/mcp-yandex-metrica/compare/v1.5.5...HEAD
+[1.5.5]: https://github.com/askads/mcp-yandex-metrica/compare/v1.5.4...v1.5.5
 [1.5.4]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.4
 [1.5.3]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.3
 [1.5.2]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.2
