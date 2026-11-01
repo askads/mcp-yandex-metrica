@@ -10,7 +10,8 @@ export function registerCounterTools(server: McpServer, client: YandexMetrikaCli
       title: "Список счётчиков Метрики",
       annotations: READ_ONLY,
       description:
-        "Возвращает счётчики Яндекс Метрики, доступные токену (Management API). У каждого счётчика есть id, name и site2 (домен сайта) — id используется в get_statistics и list_goals. Фильтр по подстроке имени или сайта задаётся параметром `search`.",
+        "Возвращает счётчики Яндекс Метрики, доступные токену (Management API). У каждого счётчика есть id, name и site2 (домен сайта) — id используется в get_statistics и list_goals. Фильтр по подстроке имени или сайта задаётся параметром `search`. " +
+          "На один сайт бывает несколько счётчиков (старый и новый, тестовый, отдельный для поддомена) — у каждого свои данные.",
       inputSchema: {
         search: z
           .string()
