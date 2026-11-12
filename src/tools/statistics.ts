@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { YandexMetrikaClient } from "../client.js";
+import type { QueryValue, StatPage, YandexMetrikaClient } from "../client.js";
+import { YandexMetrikaError } from "../types.js";
 import { compact, counterIdField, counterIdNote, csv, fail, metrikaDate, ok, READ_ONLY, resolveCounter } from "./util.js";
 
 /**
@@ -19,6 +20,33 @@ const DEFAULT_METRICS = [
   "ym:s:avgVisitDurationSeconds",
 ];
 
+/** Tried in order after "Query is too complicated", only when the caller did not set accuracy. */
+export const ACCURACY_FALLBACK: ReadonlyArray<string | number> = ["low", 0.1, 0.01];
+
+function isTooComplicated(err: unknown): err is YandexMetrikaError {
+  return err instanceof YandexMetrikaError && err.status === 400 && /too complicated/i.test(err.message);
+}
+
+function withHint(err: YandexMetrikaError, hint: string): YandexMetrikaError {
+  const hinted = new YandexMetrikaError(err.status, err.body);
+  hinted.message = `${err.message} ${hint}`;
+  return hinted;
+}
+
+function markReducedAccuracy(result: StatPage, accuracy: string | number): StatPage {
+  const share = typeof result.sample_share === "number" ? result.sample_share : undefined;
+  const sampled = result.sampled === true || (share !== undefined && share < 1);
+  const retried = `Метрика отклонила запрос с точностью по умолчанию как слишком сложный, поэтому сервер повторил его с accuracy=${accuracy}.`;
+  const note = sampled
+    ? `${retried} Данные СЕМПЛИРОВАНЫ: расчёт сделан по ${
+        share === undefined
+          ? "части данных (доля в ответе не указана)"
+          : `${+(share * 100).toPrecision(3)}% данных (sample_share=${share})`
+      }, все цифры приблизительные — об этом нужно сказать пользователю. Для точных цифр — сузить период date1..date2 или убрать часть dimensions/filters.`
+    : `${retried} Семплирование при этом не применилось (sampled=false): данные полные.`;
+  return { _accuracyReduced: true, _accuracyUsed: accuracy, _accuracyNote: note, ...result };
+}
+
 export function registerStatisticsTools(server: McpServer, client: YandexMetrikaClient): void {
   server.registerTool(
     "get_statistics",
@@ -26,7 +54,7 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
       title: "Статистика",
       annotations: READ_ONLY,
       description:
-        "Запрашивает Reporting API Яндекс Метрики (stat/v1/data) по счётчику. ПО УМОЛЧАНИЮ возвращает одну строку, агрегированную за период (без измерений), с visits/users/pageviews/bounceRate/avgVisitDurationSeconds. `dimensions` разбивает результат на строки (ym:s:date — динамика по дням, ym:s:lastTrafficSource — источники трафика, ym:s:deviceCategory — устройства), `metrics` задаёт нужные метрики — для конверсий это ym:s:goal<goalId>reaches / ym:s:goal<goalId>conversionRate (идентификаторы целей даёт list_goals). Префиксы не смешиваются: ym:s:* (визиты) и ym:pv:* (просмотры страниц) в одном запросе сочетаются только через filters. Ответ 400 «Incorrectly specified attribute» значит, что такого поля нет: не перебирать варианты имени, а взять поле из списка в `dimensions`. В ответе есть `totals` (итог по ВСЕМ строкам — для вопросов «сколько всего» суммировать не нужно), `total_rows` и `sampled`/`sample_share` (sampled=true означает, что данные приблизительные; для точных цифр нужно сузить период или передать accuracy=full). users — уникальные посетители за весь период: сумма users по дням их не даёт." + counterIdNote(client),
+        "Запрашивает Reporting API Яндекс Метрики (stat/v1/data) по счётчику. ПО УМОЛЧАНИЮ возвращает одну строку, агрегированную за период (без измерений), с visits/users/pageviews/bounceRate/avgVisitDurationSeconds. `dimensions` разбивает результат на строки (ym:s:date — динамика по дням, ym:s:lastTrafficSource — источники трафика, ym:s:deviceCategory — устройства), `metrics` задаёт нужные метрики — для конверсий это ym:s:goal<goalId>reaches / ym:s:goal<goalId>conversionRate (идентификаторы целей даёт list_goals). Префиксы не смешиваются: ym:s:* (визиты) и ym:pv:* (просмотры страниц) в одном запросе сочетаются только через filters. Ответ 400 «Incorrectly specified attribute» значит, что такого поля нет: не перебирать варианты имени, а взять поле из списка в `dimensions`. В ответе есть `totals` (итог по ВСЕМ строкам — для вопросов «сколько всего» суммировать не нужно), `total_rows` и `sampled`/`sample_share` (sampled=true означает, что данные приблизительные, посчитаны по доле sample_share; для точных цифр нужно сузить период или передать accuracy=full). Если Метрика отвечает 400 «Query is too complicated», а accuracy не задана, сервер сам повторяет запрос с меньшей точностью (low → 0.1 → 0.01) и помечает ответ полями `_accuracyReduced`/`_accuracyUsed`/`_accuracyNote` — такие цифры нужно подавать как приблизительные. Заданную accuracy сервер не меняет. users — уникальные посетители за весь период: сумма users по дням их не даёт." + counterIdNote(client),
       inputSchema: {
         counterId: counterIdField(client),
         metrics: z
@@ -69,7 +97,10 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
         accuracy: z
           .union([z.string(), z.number().min(0).max(1)])
           .optional()
-          .describe("Точность сэмплирования: 'full' — точный расчёт (медленнее) или доля 0..1. По умолчанию — авторежим API."),
+          .describe(
+            "Точность (размер выборки): low, medium, high, full (без сэмплирования, медленнее) или доля от 0 до 1 — API округляет её до степени десяти (0.1, 0.01). По умолчанию medium. " +
+              "Без accuracy сервер сам снижает точность на слишком сложном запросе; заданное значение не меняет.",
+          ),
         limit: z
           .number()
           .int()
@@ -142,10 +173,36 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
           limit,
           offset,
         });
-        const result = autoPaginate
-          ? await client.getAllStat(query, maxPages)
-          : await client.get("stat/v1/data", query);
-        return ok(result);
+        const run = (q: Record<string, QueryValue>): Promise<StatPage> =>
+          autoPaginate ? client.getAllStat(q, maxPages) : client.get<StatPage>("stat/v1/data", q);
+        try {
+          return ok(await run(query));
+        } catch (e) {
+          if (!isTooComplicated(e)) throw e;
+          if (accuracy !== undefined) {
+            return fail(
+              withHint(
+                e,
+                `Запрос шёл с заданной accuracy=${accuracy}, сервер её не менял. Варианты: не передавать accuracy — тогда сервер сам ступенчато снизит точность и пометит ответ как семплированный; либо сократить период date1..date2, убрать часть dimensions, упростить filters.`,
+              ),
+            );
+          }
+          let last = e;
+          for (const step of ACCURACY_FALLBACK) {
+            try {
+              return ok(markReducedAccuracy(await run({ ...query, accuracy: step }), step));
+            } catch (retryError) {
+              if (!isTooComplicated(retryError)) throw retryError;
+              last = retryError;
+            }
+          }
+          return fail(
+            withHint(
+              last,
+              `Сервер уже сам повторил запрос с accuracy=${ACCURACY_FALLBACK.join(", ")} — не помогло, тот же запрос повторять бессмысленно. Нужно сократить период date1..date2 (длинный период разбить на месяцы или недели и запросить по частям), убрать часть dimensions, упростить filters или сократить список metrics.`,
+            ),
+          );
+        }
       } catch (e) {
         return fail(e);
       }

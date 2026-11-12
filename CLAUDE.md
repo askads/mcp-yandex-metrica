@@ -76,6 +76,11 @@ More detail in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Tool list: [docs/TOOL
   and flags `_truncated` instead of silently cutting.
 - **Surface sampling.** The Stat API may sample; the response's `sampled`/`sample_share`
   pass through untouched so the model can warn or raise `accuracy`.
+- **Never sample silently.** On 400 "Query is too complicated" `get_statistics` retries down
+  `ACCURACY_FALLBACK` only when the caller set no `accuracy`, and labels the answer with
+  `_accuracyReduced`/`_accuracyUsed`/`_accuracyNote`. An explicit `accuracy` is never overridden.
+  The hint appended to the error must keep the telemetry outcome `error_invalid_request` — words
+  like «лимит» or «таймаут» would reclassify it (`OUTCOME_PATTERNS`).
 - **Runtime guidance for the consuming model goes in the tool `description`,** not in this
   file — the external agent never reads CLAUDE.md.
 
