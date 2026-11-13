@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
-import { ACCURACY_FALLBACK, registerStatisticsTools } from "./statistics.js";
+import { registerStatisticsTools } from "./statistics.js";
 import { YandexMetrikaError } from "../types.js";
 import { toolOutcome } from "../telemetry.js";
 
@@ -159,88 +159,40 @@ function scripted(script: unknown[]) {
   return { calls, tools };
 }
 
-test("get_statistics retries a too-complicated query at lower accuracy and labels the sampled answer", async () => {
-  const { calls, tools } = scripted([
-    tooComplicated(),
-    tooComplicated(),
-    { data: [{ metrics: [1200] }], totals: [1200], sampled: true, sample_share: 0.1 },
-  ]);
+test("get_statistics does not retry a too-complicated query and says how to narrow it", async () => {
+  const { calls, tools } = scripted([tooComplicated()]);
   const res = await tools.get_statistics({ date1: "365daysAgo", dimensions: ["ym:s:startURL"] });
-  assert.equal(res.isError, undefined);
-  assert.deepEqual(calls.map((c) => c.query.accuracy), [undefined, "low", 0.1]);
-  assert.equal(calls[2].query.date1, "365daysAgo", "the rest of the query is unchanged");
-  assert.equal(calls[2].query.dimensions, "ym:s:startURL");
-  const body = JSON.parse(res.content[0].text);
-  assert.equal(body._accuracyReduced, true);
-  assert.equal(body._accuracyUsed, 0.1);
-  assert.match(body._accuracyNote, /СЕМПЛИРОВАНЫ/);
-  assert.match(body._accuracyNote, /10% данных \(sample_share=0\.1\)/);
-  assert.deepEqual(body.totals, [1200]);
-  assert.equal(body.sampled, true);
-  assert.ok(res.content[0].text.startsWith('{"_accuracyReduced":true'), "the label precedes the rows");
-});
-
-test("get_statistics says so when the lower-accuracy retry was not sampled after all", async () => {
-  const { tools } = scripted([tooComplicated(), { data: [], totals: [5], sampled: false, sample_share: 1 }]);
-  const body = JSON.parse((await tools.get_statistics({})).content[0].text);
-  assert.equal(body._accuracyUsed, "low");
-  assert.match(body._accuracyNote, /данные полные/);
-  assert.doesNotMatch(body._accuracyNote, /СЕМПЛИРОВАНЫ/);
-});
-
-test("get_statistics labels a sampled retry even when the API omits sample_share", async () => {
-  const { tools } = scripted([tooComplicated(), { data: [], sampled: true }]);
-  const body = JSON.parse((await tools.get_statistics({})).content[0].text);
-  assert.match(body._accuracyNote, /СЕМПЛИРОВАНЫ.*доля в ответе не указана/);
-});
-
-test("get_statistics gives up after the last accuracy step with advice to narrow the query", async () => {
-  const { calls, tools } = scripted([tooComplicated(), tooComplicated(), tooComplicated(), tooComplicated()]);
-  const res = await tools.get_statistics({});
   assert.equal(res.isError, true);
-  assert.deepEqual(calls.map((c) => c.query.accuracy), [undefined, ...ACCURACY_FALLBACK]);
+  assert.equal(calls.length, 1, "each attempt costs 10+ s and lower accuracy does not help");
   const text = res.content[0].text;
   assert.match(text, /HTTP 400: query_error: Query is too complicated/);
   assert.match(text, /сократить период date1\.\.date2/);
-  assert.match(text, /dimensions/);
+  assert.match(text, /частями по месяцу/);
+  assert.match(text, /Снижать accuracy бесполезно/);
   assert.equal(toolOutcome(res), "error_invalid_request");
 });
 
-test("get_statistics never overrides an accuracy the caller set", async () => {
-  const { calls, tools } = scripted([tooComplicated()]);
-  const res = await tools.get_statistics({ accuracy: "full" });
+test("get_statistics gives the same hint whatever accuracy the caller set, and for autoPaginate", async () => {
+  for (const args of [{ accuracy: "full" }, { accuracy: 0.01 }, { autoPaginate: true }]) {
+    const { calls, tools } = scripted([tooComplicated()]);
+    const res = await tools.get_statistics(args);
+    assert.equal(res.isError, true);
+    assert.equal(calls.length, 1);
+    assert.match(res.content[0].text, /сократить период/);
+  }
+});
+
+test("get_statistics leaves other errors alone", async () => {
+  const other = new YandexMetrikaError(400, { errors: [{ error_type: "invalid_parameter", message: "Incorrectly specified attribute" }] });
+  const { calls, tools } = scripted([other]);
+  const res = await tools.get_statistics({});
   assert.equal(res.isError, true);
-  assert.equal(calls.length, 1, "no retry");
-  assert.match(res.content[0].text, /accuracy=full, сервер её не менял/);
-  assert.match(res.content[0].text, /не передавать accuracy/);
-  assert.equal(toolOutcome(res), "error_invalid_request");
+  assert.equal(calls.length, 1);
+  assert.doesNotMatch(res.content[0].text, /сократить период/);
 });
 
-test("get_statistics retries autoPaginate as a whole at the lower accuracy", async () => {
-  const { calls, tools } = scripted([tooComplicated(), { data: [1, 2], total_rows: 2, sampled: true, sample_share: 0.01 }]);
-  const res = await tools.get_statistics({ autoPaginate: true });
-  assert.deepEqual(calls.map((c) => [c.kind, c.query.accuracy]), [["getAllStat", undefined], ["getAllStat", "low"]]);
-  assert.match(JSON.parse(res.content[0].text)._accuracyNote, /1% данных/);
-});
-
-test("get_statistics leaves other errors alone, on the first call and during the fallback", async () => {
-  const other = () => new YandexMetrikaError(400, { errors: [{ error_type: "invalid_parameter", message: "Incorrectly specified attribute" }] });
-  const first = scripted([other()]);
-  const res1 = await first.tools.get_statistics({});
-  assert.equal(res1.isError, true);
-  assert.equal(first.calls.length, 1);
-  assert.doesNotMatch(res1.content[0].text, /accuracy/);
-
-  const during = scripted([tooComplicated(), new YandexMetrikaError(403, { errors: [{ error_type: "access_denied", message: "Access denied" }] })]);
-  const res2 = await during.tools.get_statistics({});
-  assert.equal(res2.isError, true);
-  assert.equal(during.calls.length, 2);
-  assert.match(res2.content[0].text, /HTTP 403/);
-});
-
-test("get_statistics does not label an answer that needed no retry", async () => {
+test("get_statistics passes a sampled answer through untouched", async () => {
   const { tools } = scripted([{ data: [], sampled: true, sample_share: 0.5 }]);
   const body = JSON.parse((await tools.get_statistics({})).content[0].text);
-  assert.equal("_accuracyReduced" in body, false);
-  assert.equal(body.sample_share, 0.5);
+  assert.deepEqual(body, { data: [], sampled: true, sample_share: 0.5 });
 });
