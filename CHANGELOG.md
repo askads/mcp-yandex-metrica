@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [1.5.6] — 2026-11-14
+
 ### Исправлено
 
 - `get_statistics`: ошибка Метрики 400 `query_error: Query is too complicated. Please reduce the
@@ -287,7 +289,8 @@
 - OAuth-токен (scope `metrika:read`), ретраи на 429/5xx с бэкоффом, таймаут запроса,
   `counterId` с дефолтом из `YANDEX_METRIKA_COUNTER_ID`.
 
-[Unreleased]: https://github.com/askads/mcp-yandex-metrica/compare/v1.5.5...HEAD
+[Unreleased]: https://github.com/askads/mcp-yandex-metrica/compare/v1.5.6...HEAD
+[1.5.6]: https://github.com/askads/mcp-yandex-metrica/compare/v1.5.5...v1.5.6
 [1.5.5]: https://github.com/askads/mcp-yandex-metrica/compare/v1.5.4...v1.5.5
 [1.5.4]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.4
 [1.5.3]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.3
