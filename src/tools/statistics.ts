@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { YandexMetrikaClient } from "../client.js";
+import type { StatPage, YandexMetrikaClient } from "../client.js";
+import { YandexMetrikaError } from "../types.js";
 import { compact, counterIdField, counterIdNote, csv, fail, metrikaDate, ok, READ_ONLY, resolveCounter } from "./util.js";
 
 /**
@@ -19,6 +20,19 @@ const DEFAULT_METRICS = [
   "ym:s:avgVisitDurationSeconds",
 ];
 
+function isTooComplicated(err: unknown): err is YandexMetrikaError {
+  return err instanceof YandexMetrikaError && err.status === 400 && /too complicated/i.test(err.message);
+}
+
+function withHint(err: YandexMetrikaError, hint: string): YandexMetrikaError {
+  const hinted = new YandexMetrikaError(err.status, err.body);
+  hinted.message = `${err.message} ${hint}`;
+  return hinted;
+}
+
+const TOO_COMPLICATED_HINT =
+  "Сервер запрос не повторял. Метрика отдаёт эту ошибку, когда не успевает посчитать отчёт: помогает сократить период date1..date2 — длинный период запросить частями по месяцу или короче; затем убрать часть dimensions и упростить filters. Снижать accuracy бесполезно: на проверке ошибка оставалась и при accuracy=0.01. При сведении частей складываются только счётчики (visits, pageviews, достижения целей); users и доли (bounceRate, conversionRate) по частям не складываются.";
+
 export function registerStatisticsTools(server: McpServer, client: YandexMetrikaClient): void {
   server.registerTool(
     "get_statistics",
@@ -26,7 +40,7 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
       title: "Статистика",
       annotations: READ_ONLY,
       description:
-        "Запрашивает Reporting API Яндекс Метрики (stat/v1/data) по счётчику. ПО УМОЛЧАНИЮ возвращает одну строку, агрегированную за период (без измерений), с visits/users/pageviews/bounceRate/avgVisitDurationSeconds. `dimensions` разбивает результат на строки (ym:s:date — динамика по дням, ym:s:lastTrafficSource — источники трафика, ym:s:deviceCategory — устройства), `metrics` задаёт нужные метрики — для конверсий это ym:s:goal<goalId>reaches / ym:s:goal<goalId>conversionRate (идентификаторы целей даёт list_goals). Префиксы не смешиваются: ym:s:* (визиты) и ym:pv:* (просмотры страниц) в одном запросе сочетаются только через filters. Ответ 400 «Incorrectly specified attribute» значит, что такого поля нет: не перебирать варианты имени, а взять поле из списка в `dimensions`. В ответе есть `totals` (итог по ВСЕМ строкам — для вопросов «сколько всего» суммировать не нужно), `total_rows` и `sampled`/`sample_share` (sampled=true означает, что данные приблизительные; для точных цифр нужно сузить период или передать accuracy=full). users — уникальные посетители за весь период: сумма users по дням их не даёт." + counterIdNote(client),
+        "Запрашивает Reporting API Яндекс Метрики (stat/v1/data) по счётчику. ПО УМОЛЧАНИЮ возвращает одну строку, агрегированную за период (без измерений), с visits/users/pageviews/bounceRate/avgVisitDurationSeconds. `dimensions` разбивает результат на строки (ym:s:date — динамика по дням, ym:s:lastTrafficSource — источники трафика, ym:s:deviceCategory — устройства), `metrics` задаёт нужные метрики — для конверсий это ym:s:goal<goalId>reaches / ym:s:goal<goalId>conversionRate (идентификаторы целей даёт list_goals). Префиксы не смешиваются: ym:s:* (визиты) и ym:pv:* (просмотры страниц) в одном запросе сочетаются только через filters. Ответ 400 «Incorrectly specified attribute» значит, что такого поля нет: не перебирать варианты имени, а взять поле из списка в `dimensions`. В ответе есть `totals` (итог по ВСЕМ строкам — для вопросов «сколько всего» суммировать не нужно), `total_rows` и `sampled`/`sample_share` (sampled=true означает, что данные приблизительные, посчитаны по доле sample_share; для точных цифр нужно сузить период или передать accuracy=full). Ответ 400 «Query is too complicated» значит, что Метрика не успела посчитать отчёт: сократить период (длинный — запросить частями по месяцу), accuracy при этом не снижать — не помогает. users — уникальные посетители за весь период: сумма users по дням их не даёт." + counterIdNote(client),
       inputSchema: {
         counterId: counterIdField(client),
         metrics: z
@@ -69,7 +83,9 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
         accuracy: z
           .union([z.string(), z.number().min(0).max(1)])
           .optional()
-          .describe("Точность сэмплирования: 'full' — точный расчёт (медленнее) или доля 0..1. По умолчанию — авторежим API."),
+          .describe(
+            "Точность (размер выборки): low, medium, high, full (без сэмплирования, медленнее) или доля от 0 до 1 — API округляет её до степени десяти (0.1, 0.01). По умолчанию medium.",
+          ),
         limit: z
           .number()
           .int()
@@ -142,10 +158,16 @@ export function registerStatisticsTools(server: McpServer, client: YandexMetrika
           limit,
           offset,
         });
-        const result = autoPaginate
-          ? await client.getAllStat(query, maxPages)
-          : await client.get("stat/v1/data", query);
-        return ok(result);
+        try {
+          return ok(
+            autoPaginate
+              ? await client.getAllStat(query, maxPages)
+              : await client.get<StatPage>("stat/v1/data", query),
+          );
+        } catch (e) {
+          if (isTooComplicated(e)) return fail(withHint(e, TOO_COMPLICATED_HINT));
+          throw e;
+        }
       } catch (e) {
         return fail(e);
       }

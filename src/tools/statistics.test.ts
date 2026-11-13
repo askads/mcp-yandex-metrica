@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
 import { registerStatisticsTools } from "./statistics.js";
+import { YandexMetrikaError } from "../types.js";
+import { toolOutcome } from "../telemetry.js";
 
 type Args = Record<string, unknown>;
 type Handler = (args: Args) => Promise<{ content: { text: string }[]; isError?: boolean }>;
@@ -124,4 +126,73 @@ test("counterId is required in the schema only when no YANDEX_METRIKA_COUNTER_ID
   assert.equal(without.safeParse(42).success, true);
   const withDefault = z.object(harness({ defaultCounterId: 7 }).schemas.get_statistics).shape.counterId;
   assert.equal(withDefault.safeParse(undefined).success, true, "default → optional");
+});
+
+const tooComplicated = () =>
+  new YandexMetrikaError(400, {
+    code: 400,
+    message: "Query is too complicated. Please reduce the date interval or sampling.",
+    errors: [{ error_type: "query_error", message: "Query is too complicated. Please reduce the date interval or sampling." }],
+  });
+
+/** Client whose stat calls answer from `script` in order: an Error is thrown, anything else returned. */
+function scripted(script: unknown[]) {
+  const calls: { query: Record<string, unknown>; kind: "get" | "getAllStat" }[] = [];
+  const next = (kind: "get" | "getAllStat", query: Record<string, unknown>) => {
+    calls.push({ query, kind });
+    const step = script[calls.length - 1];
+    if (step instanceof Error) throw step;
+    return step;
+  };
+  const client = {
+    defaultCounterId: 7,
+    get: async (_path: string, query: Record<string, unknown>) => next("get", query),
+    getAllStat: async (query: Record<string, unknown>) => next("getAllStat", query),
+  };
+  const tools: Record<string, Handler> = {};
+  const server = {
+    registerTool: (name: string, _cfg: unknown, handler: Handler) => {
+      tools[name] = handler;
+    },
+  };
+  registerStatisticsTools(server as never, client as never);
+  return { calls, tools };
+}
+
+test("get_statistics does not retry a too-complicated query and says how to narrow it", async () => {
+  const { calls, tools } = scripted([tooComplicated()]);
+  const res = await tools.get_statistics({ date1: "365daysAgo", dimensions: ["ym:s:startURL"] });
+  assert.equal(res.isError, true);
+  assert.equal(calls.length, 1, "each attempt costs 10+ s and lower accuracy does not help");
+  const text = res.content[0].text;
+  assert.match(text, /HTTP 400: query_error: Query is too complicated/);
+  assert.match(text, /сократить период date1\.\.date2/);
+  assert.match(text, /частями по месяцу/);
+  assert.match(text, /Снижать accuracy бесполезно/);
+  assert.equal(toolOutcome(res), "error_invalid_request");
+});
+
+test("get_statistics gives the same hint whatever accuracy the caller set, and for autoPaginate", async () => {
+  for (const args of [{ accuracy: "full" }, { accuracy: 0.01 }, { autoPaginate: true }]) {
+    const { calls, tools } = scripted([tooComplicated()]);
+    const res = await tools.get_statistics(args);
+    assert.equal(res.isError, true);
+    assert.equal(calls.length, 1);
+    assert.match(res.content[0].text, /сократить период/);
+  }
+});
+
+test("get_statistics leaves other errors alone", async () => {
+  const other = new YandexMetrikaError(400, { errors: [{ error_type: "invalid_parameter", message: "Incorrectly specified attribute" }] });
+  const { calls, tools } = scripted([other]);
+  const res = await tools.get_statistics({});
+  assert.equal(res.isError, true);
+  assert.equal(calls.length, 1);
+  assert.doesNotMatch(res.content[0].text, /сократить период/);
+});
+
+test("get_statistics passes a sampled answer through untouched", async () => {
+  const { tools } = scripted([{ data: [], sampled: true, sample_share: 0.5 }]);
+  const body = JSON.parse((await tools.get_statistics({})).content[0].text);
+  assert.deepEqual(body, { data: [], sampled: true, sample_share: 0.5 });
 });

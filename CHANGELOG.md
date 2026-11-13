@@ -7,6 +7,22 @@
 
 ## [Unreleased]
 
+## [1.5.6] — 2026-11-14
+
+### Исправлено
+
+- `get_statistics`: ошибка Метрики 400 `query_error: Query is too complicated. Please reduce the
+  date interval or sampling` теперь приходит с подсказкой, что делать: сократить период (длинный —
+  запросить частями по месяцу), убрать часть измерений, упростить фильтры, а `accuracy` не снижать.
+  Сервер запрос не повторяет. Проверка на живом API 13.11.2026: тот же запрос падал и с
+  `accuracy=low`, и с `0.01`, каждая попытка занимает 11+ секунд, а помогало только сокращение
+  периода.
+
+### Изменено
+
+- Описание `accuracy`: перечислены значения `low`/`medium`/`high`/`full` и доля от 0 до 1,
+  значение по умолчанию — `medium` (раньше было «авторежим API»).
+
 ## [1.5.5] — 2026-11-01
 
 ### Изменено
@@ -273,7 +289,8 @@
 - OAuth-токен (scope `metrika:read`), ретраи на 429/5xx с бэкоффом, таймаут запроса,
   `counterId` с дефолтом из `YANDEX_METRIKA_COUNTER_ID`.
 
-[Unreleased]: https://github.com/askads/mcp-yandex-metrica/compare/v1.5.5...HEAD
+[Unreleased]: https://github.com/askads/mcp-yandex-metrica/compare/v1.5.6...HEAD
+[1.5.6]: https://github.com/askads/mcp-yandex-metrica/compare/v1.5.5...v1.5.6
 [1.5.5]: https://github.com/askads/mcp-yandex-metrica/compare/v1.5.4...v1.5.5
 [1.5.4]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.4
 [1.5.3]: https://github.com/askads/mcp-yandex-metrica/releases/tag/v1.5.3
